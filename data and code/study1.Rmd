@@ -23,8 +23,16 @@ library("lme4")
 library("emmeans")
 library("afex")
 library("janitor")
+library("here")
+
 
 ```
+
+```{r}
+knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
+
+```
+
 
 ## Study 1: Possibility Generation
 
@@ -34,13 +42,12 @@ library("janitor")
 ## Cleaning Data and Prepare Dataframes for Demographics and Analysis
 knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 file.exists("study1.csv")
 getwd()
 
 
 ######################################   Read in data from study 1
-df.data1 <- read_csv("study1.csv") %>% 
+df.data1 <- read_csv(here("data and code", "study1.csv")) %>% 
   filter(row_number() > 2) %>% # additional rows in qualtrics csv 
   clean_names() %>% 
     filter(!status =="Survey Preview", #exclude bot fails,
