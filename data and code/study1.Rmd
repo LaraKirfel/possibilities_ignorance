@@ -1,0 +1,485 @@
+---
+title: "Representations of what’s possible reflect others’ epistemic states"
+
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 4
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+---
+
+```{r, message=FALSE, warning=FALSE, include = FALSE}
+# Load packages
+library("kableExtra") 
+library("pander")
+library("knitr")
+library("tidyverse")
+library("stringr")
+library("effectsize")
+library("lme4") 
+library("emmeans")
+library("afex")
+library("janitor")
+
+```
+
+## Study 1: Possibility Generation
+
+#Read in Data
+
+```{r, importing data, message=FALSE, warning=FALSE, include = FALSE}
+## Cleaning Data and Prepare Dataframes for Demographics and Analysis
+knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+file.exists("study1.csv")
+getwd()
+
+
+######################################   Read in data from study 1
+df.data1 <- read_csv("study1.csv") %>% 
+  filter(row_number() > 2) %>% # additional rows in qualtrics csv 
+  clean_names() %>% 
+    filter(!status =="Survey Preview", #exclude bot fails,
+         #!str_detect(start_date, "1/26/24"), # Exclude rows where start_date contains "1/26/24"
+         progress ==100| progress==99)
+
+######################################   Demographics
+
+df.desc1<-df.data1 %>% 
+  select(duration_in_seconds, age, ethnicity, ethnicity_6_text, gender, ethnicity, education)%>% 
+    mutate(duration_in_seconds=as.numeric(duration_in_seconds)) %>% 
+    mutate(age= as.numeric(age)) %>% 
+    summarise(n=n(),
+             mean_age=mean(age),
+             sd_age=sd(age),
+             female=sum(gender=="Female"),
+             male=sum(gender=="Male"),
+             other=sum(gender=="Other"),
+             white=sum(ethnicity=="White / Caucasian"),
+             black=sum(ethnicity=="Black / African American"),
+             latino=sum(ethnicity=="Hispanic / Latino"),
+             native=sum(ethnicity=="Native American / American Indian"),
+             asian=sum(ethnicity=="Asian / Pacific Islander"),
+             other_e=sum(ethnicity=="Other"),
+             mean_time=mean(duration_in_seconds/60),
+             sd_time=sd(duration_in_seconds/60)) 
+
+#participant_counts <- df.exp1 %>%
+#  group_by(scenario, epistemic_condition) %>%
+#  summarise(number_of_participants = n_distinct(participant)) %>% 
+#  ungroup() %>% 
+#            summarise(mean = mean(number_of_participants))
+
+#print(participant_counts)
+
+
+  
+```
+
+# Edit Data
+
+```{r, warning=FALSE, message=FALSE, include=FALSE}
+# Contuinued Data Editing for Main Analysis 
+
+df.exp1 = df.data1 %>% 
+  mutate(participant = 1:n()) %>% 
+  select(s1_fr_k_4:s16_a5_i_6,
+         participant) %>%
+    select(-contains("last_click"), -contains("click_count")) %>% 
+  gather(condition, response, -participant) %>% 
+  filter(response != "") %>% 
+  mutate(scenario = case_when(
+    str_detect(condition, "s1_") ~ "scenario 1",
+    str_detect(condition, "s2_") ~ "scenario 2",
+    str_detect(condition, "s3_") ~ "scenario 3",
+    str_detect(condition, "s4_") ~ "scenario 4",
+    str_detect(condition, "s5_") ~ "scenario 5",
+    str_detect(condition, "s6_") ~ "scenario 6",
+    str_detect(condition, "s7_") ~ "scenario 7",
+    str_detect(condition, "s8_") ~ "scenario 8",
+    str_detect(condition, "s9_") ~ "scenario 9",
+    str_detect(condition, "s10_") ~ "scenario 10",
+    str_detect(condition, "s11_") ~ "scenario 11",
+    str_detect(condition, "s12_") ~ "scenario 12",
+    str_detect(condition, "s13_") ~ "scenario 13",
+    str_detect(condition, "s14_") ~ "scenario 14",
+    str_detect(condition, "s15_") ~ "scenario 15",
+    str_detect(condition, "s16_") ~ "scenario 16")) %>% 
+mutate(epistemic_condition = case_when(
+    str_detect(condition, "_k_") ~ "Knowledge",
+    str_detect(condition, "_i_") ~ "Ignorance")) %>% 
+  mutate(responsetype = case_when(
+    str_detect(condition, "s4_a3_i_7")  ~ "normal_resp_3", #this one was weirdly coded
+    str_detect(condition, "fr_k_4") |  str_detect(condition, "fr_i_4")  ~ "resp_1",
+    str_detect(condition, "fr_k_5") |  str_detect(condition, "fr_i_5")  ~ "resp_2",
+    str_detect(condition, "fr_k_6") |  str_detect(condition, "fr_i_6")  ~ "resp_3",
+    str_detect(condition, "fr_k_7") |  str_detect(condition, "fr_i_7")  ~ "resp_4",
+    str_detect(condition, "fr_k_8") |  str_detect(condition, "fr_i_8")  ~ "resp_5",
+    str_detect(condition, "a1_k_4") |  str_detect(condition, "a1_i_4")  ~ "prob_resp_1",
+    str_detect(condition, "a1_k_5") |  str_detect(condition, "a1_i_5")  ~ "moral_resp_1",
+    str_detect(condition, "a1_k_6") |  str_detect(condition, "a1_i_6")  ~ "normal_resp_1",
+    str_detect(condition, "a2_k_4") |  str_detect(condition, "a2_i_4")  ~ "prob_resp_2",
+    str_detect(condition, "a2_k_5") |  str_detect(condition, "a2_i_5")  ~ "moral_resp_2",
+    str_detect(condition, "a2_k_6") |  str_detect(condition, "a2_i_6")  ~ "normal_resp_2",
+    str_detect(condition, "a3_k_4") |  str_detect(condition, "a3_i_4")  ~ "prob_resp_3",
+    str_detect(condition, "a3_k_5") |  str_detect(condition, "a3_i_5")  ~ "moral_resp_3",
+    str_detect(condition, "a3_k_6") |  str_detect(condition, "a3_i_6")  ~ "normal_resp_3",
+    str_detect(condition, "a4_k_4") |  str_detect(condition, "a4_i_4")  ~ "prob_resp_4",
+    str_detect(condition, "a4_k_5") |  str_detect(condition, "a4_i_5")  ~ "moral_resp_4",
+    str_detect(condition, "a4_k_6") |  str_detect(condition, "a4_i_6")  ~ "normal_resp_4",
+    str_detect(condition, "a5_k_4") |  str_detect(condition, "a5_i_4")  ~ "prob_resp_5",
+    str_detect(condition, "a5_k_5") |  str_detect(condition, "a5_i_5")  ~ "moral_resp_5",
+    str_detect(condition, "a5_k_6") |  str_detect(condition, "a5_i_6")  ~ "normal_resp_5",
+    str_detect(condition, "a1_k_7") |  str_detect(condition, "a1_i_7")  ~ "prob_resp_1",
+    str_detect(condition, "a1_k_8") |  str_detect(condition, "a1_i_8")  ~ "moral_resp_1",
+    str_detect(condition, "a1_k_9") |  str_detect(condition, "a1_i_9")  ~ "normal_resp_1",
+    str_detect(condition, "a2_k_7") |  str_detect(condition, "a2_i_7")  ~ "prob_resp_2",
+    str_detect(condition, "a2_k_8") |  str_detect(condition, "a2_i_8")  ~ "moral_resp_2",
+    str_detect(condition, "a2_k_9") |  str_detect(condition, "a2_i_9")  ~ "normal_resp_2",
+    str_detect(condition, "a3_k_7") |  str_detect(condition, "a3_i_7")  ~ "prob_resp_3",
+    str_detect(condition, "a3_k_8") |  str_detect(condition, "a3_i_8")  ~ "moral_resp_3",
+    str_detect(condition, "a3_k_9") |  str_detect(condition, "a3_i_9")  ~ "normal_resp_3",
+    str_detect(condition, "a4_k_7") |  str_detect(condition, "a4_i_7")   ~ "prob_resp_4",
+    str_detect(condition, "a4_k_8") |  str_detect(condition, "a4_i_8")   ~ "moral_resp_4",
+    str_detect(condition, "a4_k_9") |  str_detect(condition, "a4_i_9")  ~ "normal_resp_4",
+    str_detect(condition, "a5_k_7") |  str_detect(condition, "a5_i_7")  ~ "prob_resp_5",
+    str_detect(condition, "a5_k_8") |  str_detect(condition, "a5_i_8")  ~ "moral_resp_5",
+    str_detect(condition, "a5_k_9") |  str_detect(condition, "a5_i_9")  ~ "normal_resp_5",
+    str_detect(condition, "first_click") ~ "first_click",
+    str_detect(condition, "page_submit") ~ "page_submit")) %>% 
+    select(-condition) %>% 
+    pivot_wider(names_from = responsetype,
+              values_from = response) 
+  
+#is.list(df.exp1$probability) 
+
+write.csv(df.exp1, "df.exp1.csv", row.names = FALSE)
+
+
+```
+
+```{r}
+
+```
+
+
+
+## Create Long Dataframe
+
+
+```{r}
+df.exp1_long = df.exp1 %>% 
+    gather(responsetype, response, -scenario, -participant, -epistemic_condition, -first_click, -page_submit) %>% 
+ mutate(response_order = case_when(
+    str_detect(responsetype, "_1") ~ "1",
+    str_detect(responsetype, "_2") ~ "2",
+    str_detect(responsetype, "_3") ~ "3",
+    str_detect(responsetype, "_4") ~ "4",
+    str_detect(responsetype, "_5") ~ "5")) %>% 
+  mutate(response_category = case_when(
+    str_detect(responsetype, "prob_") ~ "probability",
+    str_detect(responsetype, "moral_") ~ "morality",
+    str_detect(responsetype, "normal_") ~ "normality",
+    TRUE ~ "generated response")) %>% 
+    select(-responsetype) 
+
+
+```
+
+## Create wide dataframe
+
+```{r}
+df.exp1_wide = df.exp1_long %>% 
+  pivot_wider(names_from = response_category,
+              values_from = response) %>% 
+  mutate(across(c(probability, morality, normality), as.numeric)) %>% 
+    mutate(avg=(normality+probability+morality)/3)
+
+```
+
+## Create long dataframe with average ratings across normality, probablity, morality
+
+```{r}
+df.exp1_long_avg = df.exp1_wide %>% 
+    mutate(across(c(probability, morality, normality, avg), ~as.numeric(as.character(.)))) %>%
+  pivot_longer(
+    cols = c(probability, morality, normality, avg), 
+    names_to = "response_category", 
+    values_to = "response"
+  )
+
+```
+
+
+#Export dataset with generated actions and ratings for further analysis
+
+```{r}
+
+df.exp1_long_exp <- df.exp1_long_avg  %>% 
+  filter(response_category != "generated response")
+
+write.csv(df.exp1_long_exp, "df.exp1_actions.csv", row.names = FALSE)
+
+```
+
+#Plot rating distributions in Knowledge and Ignorance condition (just to check)
+
+```{r}
+figS0 <- df.exp1_long_avg%>% 
+ mutate(question = fct_recode(response_category,
+                               value = "avg"), # Recoding 'avg' to 'value'
+    question = factor(question, levels = c("normality", "morality", "probability", "value"))) %>% 
+  filter(scenario =="scenario 7") %>% 
+    ggplot(aes(x = response, fill = question, color = question)) +
+      geom_histogram(position = "identity",
+                     alpha = 0.33,
+                     bins = 15) +
+   facet_grid(question ~ epistemic_condition)
+
+figS0
+
+```
+# Calculate Proportion of Best Option 
+`
+```{r}
+# percentage of time that a participant rates each answer for a given scenario highest. ties go to the first answer
+
+
+df.perBest <- df.exp1_wide %>% 
+  select("participant", "scenario", "epistemic_condition", "response_order", "avg") %>%
+  group_by(participant, scenario) %>% 
+  mutate(rank = rank(-avg, ties.method = "first")) %>% 
+  group_by(response_order, epistemic_condition) %>% 
+  summarise(numBest = sum(rank == 1), .groups = "drop") %>% 
+  group_by(epistemic_condition) %>% # Group by epistemic_condition
+  mutate(perBest = numBest / sum(numBest)) %>% 
+  ungroup()
+
+```
+
+#Create Dataframe with just knowledge condition
+
+```{r}
+df.exp1_wide_k <-  df.exp1_wide %>% 
+  filter(epistemic_condition=="Knowledge")
+```
+
+
+# Here we predict the order in which an answer was generated based on how highly the answer is rated in the knowledge condition
+
+```{r}
+#  anova predicting answer number by average rating of an answer
+pgPredictAnova <- summary(aov(lm(as.numeric(response_order) ~ avg, data=df.exp1_wide_k)))
+
+
+lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(normality) +  scale(probability) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_k)
+    
+    # lesion out probability
+    lmerSamp_P <- lmer(as.numeric(response_order) ~ scale(morality) + scale(normality) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_k)
+    # lesion out morality
+    lmerSamp_M <- lmer(as.numeric(response_order) ~ scale(probability) + scale(normality) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_k)
+    # lesion out normality
+      lmerSamp_N <- lmer(as.numeric(response_order) ~ scale(morality) + scale(probability) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_k)
+      
+  pgPredictP.df <- anova(lmerSamp_Full,lmerSamp_P)
+  pgPredictM.df <- anova(lmerSamp_Full,lmerSamp_M)
+  pgPredictN.df <- anova(lmerSamp_Full,lmerSamp_N)
+```
+
+#Create Dataframe with just ignorance condition
+
+```{r}
+df.exp1_wide_i <-  df.exp1_wide %>% 
+  filter(epistemic_condition=="Ignorance")
+```
+
+
+# Here we predict the order in which an answer was generated based on how highly the answer is rated in the ignorance condition
+
+```{r}
+
+pgPredictAnova <- summary(aov(lm(as.numeric(response_order) ~ avg, data=df.exp1_wide_i)))
+
+
+lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(normality) +  scale(probability) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_i)
+    
+    # lesion out probability
+    lmerSamp_P <- lmer(as.numeric(response_order) ~ scale(morality) + scale(normality) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_i)
+    # lesion out morality
+    lmerSamp_M <- lmer(as.numeric(response_order) ~ scale(probability) + scale(normality) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_i)
+    # lesion out normality
+      lmerSamp_N <- lmer(as.numeric(response_order) ~ scale(morality) + scale(probability) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide_i)
+      
+  pgPredictP.df <- anova(lmerSamp_Full,lmerSamp_P)
+  pgPredictM.df <- anova(lmerSamp_Full,lmerSamp_M)
+  pgPredictN.df <- anova(lmerSamp_Full,lmerSamp_N)
+```
+
+
+# Both conditions together: Here we predict the order in which an answer was generated based on how highly the answer is rated
+
+```{r}
+#  anova predicting answer number by average rating of an answer
+pgPredictAnova <- summary(aov(lm(as.numeric(response_order) ~ avg, data=df.exp1_wide)))
+
+
+lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(normality) +  scale(probability) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide)
+    
+    # lesion out probability
+    lmerSamp_P <- lmer(as.numeric(response_order) ~ scale(morality) + scale(normality) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide)
+    # lesion out morality
+    lmerSamp_M <- lmer(as.numeric(response_order) ~ scale(probability) + scale(normality) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide)
+    # lesion out normality
+      lmerSamp_N <- lmer(as.numeric(response_order) ~ scale(morality) + scale(probability) + 
+                         (1|scenario) + 
+                         (scale(morality) + scale(normality) +  scale(probability) |participant),
+                       data=df.exp1_wide)
+      
+  pgPredictP.df <- anova(lmerSamp_Full,lmerSamp_P)
+  pgPredictM.df <- anova(lmerSamp_Full,lmerSamp_M)
+  pgPredictN.df <- anova(lmerSamp_Full,lmerSamp_N)
+  
+
+  
+   # predicting normality from interaction of morality and probability
+  lmerNorm_Full <- lmer(scale(normality) ~ scale(morality) * scale(probability) + (1|scenario) +
+                   (scale(probability) * scale(morality) |participant), data=df.exp1_wide)
+  # predicting normality with morality and probability as separate fixed effects
+  lmerNorm_Main <- lmer(scale(normality) ~ scale(morality) + scale(probability) + (1|scenario) +
+                   (scale(probability) * scale(morality) |participant), data=df.exp1_wide)
+  # model with probability removed
+  lmerNorm_P <- lmer(scale(normality) ~ scale(morality) + (1|scenario) +
+                   (scale(probability) * scale(morality) |participant), data=df.exp1_wide)
+  # model with morality removed
+  lmerNorm_M <- lmer(scale(normality) ~ scale(probability) + (1|scenario) +
+                   (scale(probability) * scale(morality) |participant), data=df.exp1_wide)
+  
+
+  pgNormInt <- anova(lmerNorm_Full,lmerNorm_Main) # effect of interaction
+  
+  pgNormP <- anova(lmerNorm_Main,lmerNorm_P) # effect of probability
+  
+  pgNormM <- anova(lmerNorm_Main,lmerNorm_M) # effect of morality
+   
+  
+```
+
+# Figure showing Ratings of 5 generated actions by epistemic conditions (in CogSci paper)
+
+```{r fig1, echo=F, warning=F, message=F, fig.width=6.5,fig.height=5.25}
+#install.packages("viridis")  # Install
+library("viridis")           # Load
+
+fig1 <- df.exp1_long %>% 
+  mutate(epistemic_condition = factor(epistemic_condition, levels = c("Knowledge", "Ignorance"))) %>%
+  filter(response_category != "generated response") %>% 
+  mutate(response_category = factor(response_category)) %>%
+  mutate(response = as.numeric(response)) %>%
+  mutate(response_order = factor(response_order)) %>%
+  ggplot(aes(x = response_order, y = response, fill = response_category)) +
+  coord_cartesian(xlim = c(0.75, 5.25), ylim = c(0, 100)) +
+  geom_boxplot(position = "dodge", alpha = .4, outlier.alpha = 0, width=0.8, notch = TRUE) +
+  geom_point(aes(color = response_category), position = position_jitterdodge(jitter.width = .35), alpha = 0.05) +
+  labs(
+    x = "Action Generation number", 
+    y = "Value of option generated", 
+    fill = "Rating:", 
+    color = "Rating:"
+  ) +
+  geom_smooth(
+    aes(y = response, x = as.numeric(response_order), color = response_category), 
+    method = "lm", 
+    position = position_dodge(width = .75)
+  ) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.4)),
+    axis.title = element_text(size = rel(1.5), vjust = .9),
+    axis.text.x = element_text(size = rel(1.5)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.3)),
+    strip.text = element_text(size = rel(1.3)),  # Matches font size in facet panels
+    strip.background = element_rect(fill = "white", color = "black")  # New panel background color
+  ) +
+scale_color_viridis(discrete = TRUE, option = "D")+
+  scale_fill_viridis(discrete = TRUE) +
+  facet_wrap(~ epistemic_condition)
+
+ggsave(fig1, file = "figMNPratings.pdf", width = 11, height = 7)
+
+fig1
+```
+# Figure Proportion of Best Option by Action Generation Number (in Cogsci paper)
+
+```{r}
+figS1 <- df.perBest %>%
+  mutate(epistemic_condition = factor(epistemic_condition, levels = c("Knowledge", "Ignorance"))) %>%
+  ggplot(aes(x = as.numeric(response_order), y = perBest, color = epistemic_condition, group = epistemic_condition)) + 
+  geom_point(size =2.5) +
+  geom_line(size = 1.3) +
+  labs(x = "Generation number", y = "Proportion of options generated that were best", color = "Condition") +
+  theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.5)),
+    axis.title = element_text(size = rel(1.5), vjust = .9),
+    axis.text.x = element_text(size = rel(1.5)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.5)),
+    legend.title = element_text(size = rel(1.5)),
+    strip.text = element_text(size = rel(1.5)),
+    strip.background = element_rect(fill = "white", color = "black")
+  )+
+    scale_color_viridis(discrete = TRUE, option = "D")+
+  scale_fill_viridis(discrete = TRUE) 
+
+print(figS1)
+ggsave(figS1, file = "figBest.pdf", width = 7, height = 7)
+```
+
+
