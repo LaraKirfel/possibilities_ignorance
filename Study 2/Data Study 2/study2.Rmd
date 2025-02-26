@@ -1,0 +1,1612 @@
+---
+title: "Representations of what’s possible reflect others’ epistemic states"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 4
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+---
+
+```{r, message=FALSE, warning=FALSE, include = FALSE}
+# Load packages
+library("kableExtra") 
+library("pander")
+library("knitr")
+library("tidyverse")
+library("stringr")
+library("effectsize")
+library("lme4") 
+library("emmeans")
+library("afex")
+library("janitor")
+```
+
+## Study 2: Action Ratings and Force Judgment
+
+
+```{r, message=FALSE, warning=FALSE, include = FALSE}
+# set knitr options
+opts_chunk$set(comment = "",
+               fig.show = "hold")
+# suppress summarise() grouping warning 
+options(dplyr.summarise.inform = F)
+# use effects contrast coding to interpret effects from categorical variables as main effects 
+options(contrasts = c("contr.sum", "contr.poly"))
+```
+
+
+#Read in Data from Study 2, create Demographics Dataframe
+
+```{r, importing data, message=FALSE, warning=FALSE, include = FALSE}
+## Cleaning Data and Prepare Dataframes for Demographics and Analysis
+
+######################################   Read in data from study 1
+df.data2 <- read.csv("Study2.csv") %>% 
+  filter(row_number() > 2) %>% # additional rows in qualtrics csv 
+  clean_names() %>% 
+    filter(!status =="Survey Preview", #exclude bot fails,
+         #!str_detect(start_date, "1/26/24"), # Exclude rows where start_date contains "1/26/24"
+         progress ==100| progress==99) %>% 
+    mutate(participant = 1:n())
+
+
+######################################   Demographics
+
+df.desc2<-df.data2 %>% 
+      select(duration_in_seconds, age, age_1_text, ethnicity, ethnicity_10_text, gender, ethnicity)%>% 
+    #filter(duration_in_seconds != "", age != "", age_1_text != "", ethnicity != "", ethnicity_10_text != "", gender != "") %>% 
+     mutate(duration_in_seconds=as.numeric(duration_in_seconds)) %>% 
+    mutate(age_1_text= as.numeric(age_1_text)) %>% 
+    summarise(n=n(),
+             mean_age=mean(age_1_text, na.rm = TRUE),
+             sd_age=sd(age_1_text, na.rm = TRUE),
+             female=sum(gender=="Female", na.rm = TRUE),
+             male=sum(gender=="Male", na.rm = TRUE),
+             NB=sum(gender=="Non-binary", na.rm = TRUE),
+             undisclosed=sum(gender=="Prefer not to say", na.rm = TRUE),
+             white=sum(ethnicity=="Caucasian/White", na.rm = TRUE),
+             black=sum(ethnicity=="Black/African", na.rm = TRUE),
+             latino=sum(ethnicity=="Hispanic/Latinx", na.rm = TRUE),
+             native=sum(ethnicity=="Alaskan or American Indian", na.rm = TRUE),
+             pacific=sum(ethnicity=="Native Hawaiian or Pacific Islander", na.rm = TRUE),
+             asian=sum(ethnicity=="Asian"),
+             other_e=sum(ethnicity=="Multiethnic", na.rm = TRUE),
+             mean_time=mean(duration_in_seconds/60),
+             sd_time=sd(duration_in_seconds/60)) 
+
+
+```
+# Create dataframe for analysis
+
+```{r, warning=FALSE, message=FALSE, include=FALSE}
+# Contuinued Data Editing for Main Analysis 
+
+df.exp2 = df.data2 %>% 
+  select(s1kn_hadto_1:s16ig_rating_3,
+         participant) %>%
+  gather(condition, response, -participant) %>% 
+  filter(response != "") %>% 
+  mutate(scenario = case_when(
+    str_detect(condition, "s2") ~ "scenario 2",
+    str_detect(condition, "s3") ~ "scenario 3",
+    str_detect(condition, "s4") ~ "scenario 4",
+    str_detect(condition, "s5") ~ "scenario 5",
+    str_detect(condition, "s6") ~ "scenario 6",
+    str_detect(condition, "s7") ~ "scenario 7",
+    str_detect(condition, "s8") ~ "scenario 8",
+    str_detect(condition, "s9") ~ "scenario 9",
+    str_detect(condition, "s10") ~ "scenario 10",
+    str_detect(condition, "s11") ~ "scenario 11",
+    str_detect(condition, "s12") ~ "scenario 12",
+    str_detect(condition, "s13") ~ "scenario 13",
+    str_detect(condition, "s14") ~ "scenario 14",
+    str_detect(condition, "s15") ~ "scenario 15",
+    str_detect(condition, "s16") ~ "scenario 16",
+    str_detect(condition, "s1") ~ "scenario 1",
+)) %>% 
+mutate(epistemic_condition = case_when(
+    str_detect(condition, "kn") ~ "knowledge",
+    str_detect(condition, "ig") ~ "ignorance")) %>% 
+    mutate(responsetype = case_when(
+        str_detect(condition, "hadto")  ~ "hadto",
+        str_detect(condition, "rating_1") ~ "probability",
+        str_detect(condition, "rating_2") ~ "morality",
+        str_detect(condition, "rating_3") ~ "normality")) %>% 
+      select(-condition) %>% 
+    pivot_wider(names_from = responsetype,
+              values_from = response) 
+ 
+```
+
+# Create Dataframe with Actual Actions used in Study 2 and assignment to participants
+
+```{r}
+df.exp2action = df.data2 %>% 
+  select(participant, s1a:s16a) %>%
+    gather(condition, action, -participant) %>% 
+    filter(action != "") %>% 
+  mutate(scenario = case_when(
+   str_detect(condition, "s2a") ~ "scenario 2",
+    str_detect(condition, "s3a") ~ "scenario 3",
+    str_detect(condition, "s4a") ~ "scenario 4",
+    str_detect(condition, "s5a") ~ "scenario 5",
+    str_detect(condition, "s6a") ~ "scenario 6",
+    str_detect(condition, "s7a") ~ "scenario 7",
+    str_detect(condition, "s8a") ~ "scenario 8",
+    str_detect(condition, "s9a") ~ "scenario 9",
+    str_detect(condition, "s10a") ~ "scenario 10",
+    str_detect(condition, "s11a") ~ "scenario 11",
+    str_detect(condition, "s12a") ~ "scenario 12",
+    str_detect(condition, "s13a") ~ "scenario 13",
+    str_detect(condition, "s14a") ~ "scenario 14",
+    str_detect(condition, "s15a") ~ "scenario 15",
+    str_detect(condition, "s16a") ~ "scenario 16",
+    str_detect(condition, "s1a") ~ "scenario 1")) 
+
+  
+```
+
+#Merge Dataframe with Action Ratings and the actual actions participants were assigned to
+
+```{r}
+
+
+df.exp2 <- df.exp2 %>% 
+  right_join(df.exp2action, by = c("participant", "scenario")) %>% 
+ mutate(actionNumb = case_when(
+    scenario == "scenario 1" & str_detect(action, "call") ~ "1_1",
+    scenario == "scenario 1" & str_detect(action, "demand") ~ "1_2",
+    scenario == "scenario 1" & str_detect(action, "reschedule") ~ "1_3",
+    scenario == "scenario 1" & str_detect(action, "steal") ~ "1_4",
+    scenario == "scenario 1" & str_detect(action, "take") ~ "1_5",
+    scenario == "scenario 1" & str_detect(action, "try") ~ "1_6",
+    scenario == "scenario 2" & str_detect(action, "call") ~ "2_1",
+    scenario == "scenario 2" & str_detect(action, "text") ~ "2_2",
+    scenario == "scenario 2" & str_detect(action, "send") ~ "2_3",
+    scenario == "scenario 2" & str_detect(action, "steal") ~ "2_4",
+    scenario == "scenario 2" & str_detect(action, "create") ~ "2_5",
+    scenario == "scenario 2" & str_detect(action, "wait") ~ "2_6",
+    scenario == "scenario 3" & str_detect(action, "give") ~ "3_1",
+    scenario == "scenario 3" & str_detect(action, "backstage") ~ "3_2",
+    scenario == "scenario 3" & str_detect(action, "pretend") ~ "3_3",
+    scenario == "scenario 3" & str_detect(action, "bribe") ~ "3_4",
+    scenario == "scenario 3" & str_detect(action, "dress") ~ "3_5",
+   scenario == "scenario 3" & str_detect(action, "person") ~ "3_6",
+   scenario == "scenario 4" & str_detect(action, "organize") ~ "4_1",
+   scenario == "scenario 4" & str_detect(action, "ration") ~ "4_2",
+   scenario == "scenario 4" & str_detect(action, "request") ~ "4_3",
+   scenario == "scenario 4" & str_detect(action, "sell") ~ "4_4",
+   scenario == "scenario 4" & str_detect(action, "serve") ~ "4_5",
+   scenario == "scenario 4" & str_detect(action, "throw") ~ "4_6",
+   scenario == "scenario 5" & str_detect(action, "boost") ~ "5_1",
+   scenario == "scenario 5" & str_detect(action, "wood") ~ "5_2",
+   scenario == "scenario 5" & str_detect(action, "huddle") ~ "5_3",
+   scenario == "scenario 5" & str_detect(action, "attempt") ~ "5_4",
+   scenario == "scenario 5" & str_detect(action, "steal") ~ "5_5",
+   scenario == "scenario 5" & str_detect(action, "throw") ~ "5_6",
+   scenario == "scenario 6" & str_detect(action, "keep") ~ "6_1",
+   scenario == "scenario 6" & str_detect(action, "cat") ~ "6_2",
+   scenario == "scenario 6" & str_detect(action, "stare") ~ "6_3",
+   scenario == "scenario 6" & str_detect(action, "tackle") ~ "6_4",
+   scenario == "scenario 6" & str_detect(action, "wave") ~ "6_5",
+   scenario == "scenario 6" & str_detect(action, "call") ~ "6_6",
+   scenario == "scenario 7" & str_detect(action, "call") ~ "7_1",
+   scenario == "scenario 7" & str_detect(action, "refuse") ~ "7_2",
+   scenario == "scenario 7" & str_detect(action, "steal") ~ "7_3",
+   scenario == "scenario 7" & str_detect(action, "house") ~ "7_4",
+   scenario == "scenario 7" & str_detect(action, "turn") ~ "7_5",
+   scenario == "scenario 7" & str_detect(action, "yell") ~ "7_6",
+   scenario == "scenario 8" & str_detect(action, "loudspeaker") ~ "8_1",
+   scenario == "scenario 8" & str_detect(action, "call") ~ "8_2",
+   scenario == "scenario 8" & str_detect(action, "check") ~ "8_3",
+   scenario == "scenario 8" & str_detect(action, "light") ~ "8_4",
+   scenario == "scenario 8" & str_detect(action, "pour") ~ "8_5",
+   scenario == "scenario 8" & str_detect(action, "slash") ~ "8_6",
+   scenario == "scenario 9" & str_detect(action, "hide") ~ "9_1",
+   scenario == "scenario 9" & str_detect(action, "make") ~ "9_2",
+   scenario == "scenario 9" & str_detect(action, "pretend") ~ "9_3",
+   scenario == "scenario 9" & str_detect(action, "dance") ~ "9_4",
+   scenario == "scenario 9" & str_detect(action, "whistle") ~ "9_5",
+   scenario == "scenario 9" & str_detect(action, "call") ~ "9_6",
+   scenario == "scenario 10" & str_detect(action, "arm") ~ "10_1",
+   scenario == "scenario 10" & str_detect(action, "water") ~ "10_2",
+   scenario == "scenario 10" & str_detect(action, "hike") ~ "10_3",
+   scenario == "scenario 10" & str_detect(action, "leave") ~ "10_4",
+   scenario == "scenario 10" & str_detect(action, "arm") ~ "10_5",
+   scenario == "scenario 10" & str_detect(action, "stuck") ~ "10_6",
+   scenario == "scenario 11" & str_detect(action, "arm") ~ "11_1",
+   scenario == "scenario 11" & str_detect(action, "water") ~ "11_2",
+   scenario == "scenario 11" & str_detect(action, "hike") ~ "11_3",
+   scenario == "scenario 11" & str_detect(action, "leave") ~ "11_4",
+   scenario == "scenario 11" & str_detect(action, "arm") ~ "11_5",
+   scenario == "scenario 11" & str_detect(action, "stuck") ~ "11_6",
+   scenario == "scenario 12" & str_detect(action, "break") ~ "12_1",
+   scenario == "scenario 12" & str_detect(action, "locksmith") ~ "12_2",
+   scenario == "scenario 12" & str_detect(action, "family") ~ "12_3",
+   scenario == "scenario 12" & str_detect(action, "find") ~ "12_4",
+   scenario == "scenario 12" & str_detect(action, "slide") ~ "12_5",
+   scenario == "scenario 12" & str_detect(action, "brigade") ~ "12_6",
+   scenario == "scenario 13" & str_detect(action, "buy") ~ "13_1",
+   scenario == "scenario 13" & str_detect(action, "rob") ~ "13_2",
+   scenario == "scenario 13" & str_detect(action, "ask") ~ "13_3",
+   scenario == "scenario 13" & str_detect(action, "sell") ~ "13_4",
+   scenario == "scenario 13" & str_detect(action, "offer") ~ "13_5",
+   scenario == "scenario 13" & str_detect(action, "lie") ~ "13_6",
+   scenario == "scenario 14" & str_detect(action, "send") ~ "14_1",
+   scenario == "scenario 14" & str_detect(action, "turn") ~ "14_2",
+   scenario == "scenario 14" & str_detect(action, "set") ~ "14_3",
+   scenario == "scenario 14" & str_detect(action, "descend") ~ "14_4",
+   scenario == "scenario 14" & str_detect(action, "call") ~ "14_5",
+   scenario == "scenario 14" & str_detect(action, "orginal") ~ "14_6",
+   scenario == "scenario 15" & str_detect(action, "talk") ~ "15_1",
+   scenario == "scenario 15" & str_detect(action, "location") ~ "15_2",
+   scenario == "scenario 15" & str_detect(action, "doors") ~ "15_3",
+   scenario == "scenario 15" & str_detect(action, "surveillance") ~ "15_4",
+   scenario == "scenario 15" & str_detect(action, "fault") ~ "15_5",
+   scenario == "scenario 15" & str_detect(action, "restaurant") ~ "15_6",
+   scenario == "scenario 16" & str_detect(action, "agree") ~ "16_1",
+   scenario == "scenario 16" & str_detect(action, "help") ~ "16_2",
+   scenario == "scenario 16" & str_detect(action, "take") ~ "16_3",
+   scenario == "scenario 16" & str_detect(action, "postpone") ~ "16_4",
+   scenario == "scenario 16" & str_detect(action, "lie") ~ "16_5",
+   scenario == "scenario 16" & str_detect(action, "tie") ~ "16_6"
+))
+
+```
+
+## Create Long Dataframe
+
+```{r}
+df.exp2_long = df.exp2 %>% 
+    pivot_longer(
+    cols = c(hadto, probability, morality, normality), 
+    names_to = "response_category", 
+    values_to = "response"
+  )
+  
+```
+
+## Create Wide Dataframe + avg rating
+
+```{r}
+  
+df.exp2_wide = df.exp2_long %>% 
+  pivot_wider(names_from = response_category,
+              values_from = response) %>% 
+  mutate(across(c(probability, morality, normality), as.numeric)) %>% 
+    mutate(avg=(normality+probability+morality)/3)
+
+```
+
+## Create Long Dataframe with avg rating
+
+
+```{r}
+
+df.exp2_long_avg <- df.exp2_wide %>% 
+    mutate(across(c(hadto, probability, morality, normality, avg), ~as.numeric(as.character(.)))) %>%
+  pivot_longer(
+    cols = c(hadto, probability, morality, normality, avg), 
+    names_to = "response_category", 
+    values_to = "response"
+  ) 
+```
+
+# Histogram showing the distribution of participant response ratings (not in paper)
+
+```{r}
+library(ggpubr)
+library(dplyr)
+library(forcats)
+
+figS1 <- df.exp2_long_avg %>%
+  #filter(response_category != "hadto") %>%
+  mutate(
+    question = fct_recode(response_category, value = "avg"), # Recoding 'avg' to 'value'
+    question = factor(question, levels = c("hadto", "normality", "morality", "probability", "value"))
+  ) %>%
+  filter(scenario == "scenario 5") %>%
+  gghistogram(
+    x = "response",
+    y = "..density..",
+    add = "mean",                # Adds a mean line
+    rug = TRUE,                  # Adds rug marks
+    fill = "question",           # Colors bars by 'question'
+    palette = "jco",             # Sets color palette
+    add_density = TRUE,          # Adds density curve
+    facet.by = c("question", "epistemic_condition"), # Facets by both variables
+    bins = 15                    # Number of bins
+  ) +
+  labs(
+    title = "Distribution of Responses with Density Curves",
+    x = "Response",
+    y = "Density",
+    fill = "Question"
+  ) +
+  theme_minimal()
+
+figS1
+
+#1,3,4,5, 13, 14, 
+
+```
+# Density plot showing the distribution of participant's force judgments in scenario 5 (not in paper)
+
+
+```{r}
+
+df.exp2rating <- df.exp2_long_avg %>% 
+  #filter(response_category!="hadto") %>% 
+    group_by(scenario, epistemic_condition,response_category) %>%
+    summarise(mean = mean(response), .groups = "drop") %>%
+    as.data.frame() 
+
+figS2 <- df.exp2_long_avg %>%
+filter(scenario == "scenario 5") %>%
+filter(response_category == "hadto") %>%
+ggplot(aes(x = response, fill = epistemic_condition)) +
+        geom_density(alpha = .7)+
+geom_vline(
+    data = df.exp2rating %>%
+      filter(scenario == "scenario 5", response_category == "hadto"),
+    aes(xintercept = mean, color = epistemic_condition),
+    linetype = "dotted",
+    size = 1
+  ) 
+
+figS2 
+```
+
+# Density plot showing the distribution of participant's judgments in scenario 5 (CogSci paper)
+
+
+```{r}
+
+#scenarios in which there is a visible difference, with ignorance being rated higher 4, 5, 14,16
+#scenarios in which there is a visible difference, with knowledge being rated highere: 3, 1
+library("viridis")           
+
+figS2 <- df.exp2_long_avg %>%
+  filter(scenario == "scenario 1") %>%
+  filter(response_category != "avg") %>%
+  mutate(response_category = fct_recode(response_category, 
+                                        "forced to" = "hadto")) %>% 
+  mutate(response_category = fct_relevel(response_category, 
+                                         "morality", "probability", "normality", "forced to")) %>%          
+  ggplot(aes(x = response, fill = epistemic_condition)) +
+  geom_density(alpha = .4) +
+  geom_vline(
+    data = df.exp2rating %>%
+    filter(scenario == "scenario 5") %>% 
+    filter(response_category != "avg") %>% 
+      mutate(response_category = fct_recode(response_category, 
+                                        "forced to" = "hadto")) %>% 
+  mutate(response_category = fct_relevel(response_category, 
+                                         "morality", "probability", "normality", "forced to")),
+    aes(xintercept = mean, color = epistemic_condition),
+    linetype = "dotted",
+    size = 1
+  ) +
+    theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.4)),
+    axis.title = element_text(size = rel(1.5), vjust = .9),
+    axis.text.x = element_text(size = rel(1.5)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.3)),
+    strip.text = element_text(size = rel(1.3)),  # Matches font size in facet panels
+    strip.background = element_rect(fill = "white", color = "black"), # New panel background color
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # Custom title
+    plot.subtitle = element_text(size = 14, hjust = 0.5)  # Custom subtitle
+  ) +
+  scale_color_viridis(discrete = TRUE, option = "D")+
+  scale_fill_viridis(discrete = TRUE ) +
+  facet_wrap(~ response_category)+
+  labs(title = "Scenario 5: Brad")
+
+figS2
+
+ggsave(figS2, file="figContextRatings.pdf", width = 8, height = 8, units = "in")
+
+
+```
+# Density plot showing the distribution of participant's judgments across all scenarios
+
+
+```{r}
+# Prepare the data for geom_vline, optionally filtering and calculating the mean
+df_vline_data <- df.exp2rating %>%
+  # Uncomment the next line if filtering by scenario is needed
+  # filter(scenario == "scenario 4") %>%
+  group_by(epistemic_condition) %>%
+  summarize(mean_xintercept = mean(mean, na.rm = TRUE), .groups = 'drop')
+
+# Plot
+figS3 <- df.exp2_long_avg %>%
+  ggplot(aes(x = response, fill = epistemic_condition)) +
+  geom_density(alpha = .7) +
+  geom_vline(
+    data = df_vline_data,
+    aes(xintercept = mean_xintercept, color = epistemic_condition),
+    linetype = "dotted",
+    size = 1
+  ) +
+  facet_wrap(~ response_category)
+
+print(figS3)
+
+```
+#Create Dataframe with mean ratings
+
+
+```{r}
+
+df.exp2mean <- df.exp2_long_avg %>%
+  filter(response_category != "hadto") %>%
+  group_by(scenario, action, epistemic_condition, response_category) %>%
+  summarise(mean = mean(response), .groups = "drop") %>%
+    ungroup() 
+
+
+```
+
+
+# Create Dataframe with mean ratings, min, max etc for both epistemic conditions and all rating types
+
+```{r}
+# Create a function to calculate stats for a given condition and response category
+calculate_stats <- function(data, condition, prefix) {
+  data %>%
+    filter(epistemic_condition == condition) %>%
+    group_by(response_category) %>%
+    summarize(
+      Min = round(min(mean), 2),
+      Max = round(max(mean), 2),
+      Mean = round(mean(mean), 2),
+      SD = round(sd(mean), 2),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Condition = condition,
+      Prefix = prefix,
+      Variable = paste0(Prefix, "_", toupper(substr(response_category, 1, 1)))
+    ) %>%
+    select(Variable, Condition, Min, Max, Mean, SD)
+}
+
+# Apply the function for both knowledge and ignorance conditions
+knowledge_stats <- calculate_stats(df.exp2mean, "knowledge", "K")
+ignorance_stats <- calculate_stats(df.exp2mean, "ignorance", "I")
+
+# Combine the results into a single table
+stats_table <- bind_rows(knowledge_stats, ignorance_stats)
+
+# Print or save the table
+stats_table
+
+```
+
+#Create Dataset with means for Modal Distance Plot
+
+```{r modalDistancePlot, message=F,warning=F,echo=F, fig.width=6,fig.height=5.25}
+## Figure 4
+# Figure showing how modal distance is calculated
+
+df.exp2rating <- df.exp2_long_avg %>% 
+  #filter(response_category!="hadto") %>% 
+    group_by(scenario, action, epistemic_condition,response_category) %>%
+    summarise(mean = mean(response), .groups = "drop") %>%
+    as.data.frame() %>% 
+  mutate(mean=as.numeric(mean))
+
+
+```
+
+##### Modal Distance Plot: Ignorance Condition
+
+```{r modalDistancePlot, message=F,warning=F,echo=F, fig.width=6,fig.height=5.25}
+library(ggrepel)
+
+df.exp1rating <- read.csv("df.exp1rating.csv", stringsAsFactors = FALSE)
+
+
+density5i <-  df.exp1rating %>% 
+  filter(scenario == "scenario 5") %>% ## just using our example context
+  filter(epistemic_condition=="ignorance") %>% 
+  filter(response_category == "avg") %>% ## using the average measure
+  mutate(disvalue=100-response) %>%
+    ggplot(aes(x = disvalue),color="grey") +
+      geom_histogram(aes(y = ..density..),
+                     position = "identity",
+                     alpha = 0.33,
+                     bins = 20) +
+      geom_density(lwd = 1, alpha = 0.25, fill="grey") +
+      geom_label_repel(data = df.exp2rating %>% filter(scenario == "scenario 5") %>% ## again only context 5 for the actual actions
+                                     filter(response_category=="avg") %>%
+                                      ## again using the average of the judgments
+                                     filter(epistemic_condition=="ignorance") %>% 
+                                     mutate(disvalue=100-mean,
+                                            event=factor(action),
+                                            shortevent = factor(c("search water source",
+                                                                  "three-legged race",
+                                                                  "huddle",
+                                                                  "steal food water",
+                                                                  "throw away food",
+                                                                  "find dry wood")[event])
+                                            ), 
+                 aes(x = disvalue, y = -0.006, 
+                     label = shortevent, color=c("black","black","black","red","black","black")),
+                 check_overlap=TRUE,
+                 position=position_jitter(width = 0, height = .001,seed=4),
+                 segment.colour = NA,
+                 size = 4
+                ) +
+    scale_color_manual(values=c("black","red")) +
+    xlab("Disvalue Score") +
+    ylab("Density") +
+    theme_bw() +
+    theme(
+      plot.background = element_blank()
+      ,panel.grid.major = element_blank()
+      ,panel.grid.minor = element_blank()
+      ,legend.title=element_blank()
+      ,legend.text=element_text(size=rel(1.25))
+      ,axis.text.y=element_text(size=rel(1))
+      ,axis.title.x=element_text(size=rel(1.25))
+      ,axis.title.y=element_text(vjust=.9,size=rel(1.25))
+      ,axis.ticks = element_blank()
+      ,strip.text=element_text(size=rel(1))
+      ,axis.title=element_text(size=rel(1))
+     ,legend.position = "none"
+     ,plot.title = element_text(hjust = 0.5)
+    ) 
+
+# Actual action for context 13 to select (get x value)
+infoAi <- ggplot_build(density5i)$data[[3]] ## these are the actual action points
+infoCi <- ggplot_build(density5i)$data[[2]] ## this is the density curve
+
+c5ih.xmax <- infoAi$x[4] ## chose a high abnormality actual action
+c5ih.info <- infoCi %>% filter(x < c5ih.xmax)
+
+c5i.h <- density5i + 
+         geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+                      aes(x = 30, y = .021, xend = 45, yend = .0025),
+                  arrow = arrow(length = unit(0.45, "cm")),
+                  color="red", alpha=.35, linetype=1) +
+          geom_vline(xintercept=c5ih.xmax,alpha=.5,linetype=3,color="red") +
+          geom_area(data = c5ih.info, aes(x=x, y=y), fill="red",alpha=.25) +
+          annotate(geom="text", x=30, y=.022, label="Modal Distance(steal food)",
+            color="red",alpha=.65, size = 4) 
+c5i.h
+ggsave("c5i_h.png", plot = c5i.h, width = 8, height = 6, units = "in")
+
+```
+##### Modal Distance Plot: Knowledge Condition
+
+
+```{r}
+density5k <-  df.exp1rating %>% 
+  filter(scenario == "scenario 5") %>% ## just using our example context
+  filter(epistemic_condition=="knowledge") %>% 
+  filter(response_category == "avg") %>% ## using the average measure
+  mutate(disvalue=100-response) %>%
+    ggplot(aes(x = disvalue),color="grey") +
+      geom_histogram(aes(y = ..density..),
+                     position = "identity",
+                     alpha = 0.33,
+                     bins = 20) +
+      geom_density(lwd = 1, alpha = 0.25, fill="grey") +
+      geom_label_repel(data = df.exp2rating %>% filter(scenario == "scenario 5") %>% ## again only context 5 for the actual actions
+                                     filter(response_category=="avg") %>%
+                                      ## again using the average of the judgments
+                                     filter(epistemic_condition=="knowledge") %>% 
+                                     mutate(disvalue=100-mean,
+                                            event=factor(action),
+                                            shortevent = factor(c("search water source",
+                                                                  "three-legged race",
+                                                                  "huddle",
+                                                                  "steal food water",
+                                                                  "throw away food",
+                                                                  "find dry wood")[event])
+                                            ), 
+                 aes(x = disvalue, y = -0.006, 
+                     label = shortevent, color=c("black","black","black","red","black","black")),
+                 check_overlap=TRUE,
+                 position=position_jitter(width = 0, height = .001,seed=4),
+                 segment.colour = NA,
+                 size = 4 
+                ) +
+    scale_color_manual(values=c("black","red")) +
+    xlab("Disvalue Score") +
+    ylab("Density") +
+    theme_bw() +
+    theme(
+      plot.background = element_blank()
+      ,panel.grid.major = element_blank()
+      ,panel.grid.minor = element_blank()
+      ,legend.title=element_blank()
+      ,legend.text=element_text(size=rel(1.25))
+      ,axis.text.y=element_text(size=rel(1))
+      ,axis.title.x=element_text(size=rel(1.25))
+      ,axis.title.y=element_text(vjust=.9,size=rel(1.25))
+      ,axis.ticks = element_blank()
+      ,strip.text=element_text(size=rel(1))
+      ,axis.title=element_text(size=rel(1))
+     ,legend.position = "none"
+     ,plot.title = element_text(hjust = 0.5)
+    ) 
+
+# Actual action for context 13 to select (get x value)
+infoAk <- ggplot_build(density5k)$data[[3]] ## these are the actual action points
+infoCk <- ggplot_build(density5k)$data[[2]] ## this is the density curve
+
+c5kh.xmax <- infoAk$x[4] ## chose a high abnormality actual action
+c5kh.info <- infoCk %>% filter(x < c5kh.xmax)
+
+c5k.h <- density5k + 
+         geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+                      aes(x = 30, y = .021, xend = 45, yend = .0025),
+                  arrow = arrow(length = unit(0.45, "cm")),
+                  color="red", alpha=.35, linetype=1) +
+          geom_vline(xintercept=c5kh.xmax,alpha=.5,linetype=3,color="red") +
+          geom_area(data = c5kh.info, aes(x=x, y=y), fill="red",alpha=.25) +
+          annotate(geom="text", x=30, y=.022, label="Modal Distance(steal food)",
+            color="red",alpha=.65, size = 4) 
+c5k.h
+
+ggsave("c5k_h.png", plot = c5k.h, width = 8, height = 6, units = "in")
+
+```
+
+# Add both plots together, code doesn't work
+
+```{r}
+# Load required package for combining plots
+library(patchwork)
+
+c5k.h <- c5k.h + theme(axis.title.y = element_blank())
+
+
+# Combine the two plots side by side
+combined_plot <- c5i.h + c5k.h + 
+  plot_annotation(title = "Modal Distance Across Conditions",
+                  subtitle = "Ignorance (Left) vs. Knowledge (Right)")
+
+,
+                  theme = theme(plot.title = element_text(size = 12, hjust = 0.5),
+                                plot.subtitle = element_text(size = 12, hjust = 0.5)))
+
+# Save the combined plot as a single image
+ggsave("combined_modal_distance.png", plot = combined_plot, width = 12, height = 6, units = "in")
+
+# Display the combined plot
+combined_plot
+```
+
+# Create Modal Distance Measure and Modal Distance Table from Study 1 Ratings
+
+```{r modalDistance, message=F,warning=F,echo=F}
+### Calculate contextual and epistemic modal distance for every action
+modalDistTablei <- data.frame()
+
+# Iterate over each unique context and epistemic condition combination
+for (c in unique(df.exp1rating$scenario)) {
+  for (e in unique(df.exp1rating$epistemic_condition)) {
+    
+    numbSamples <- 10000
+    
+    pgSamp <- data.frame(sampId = seq(1,numbSamples))
+    
+    # Filter and sample for each question type within the specific context and epistemic condition
+    pgSamp$avg <- df.exp1rating %>%
+      filter(scenario == c, epistemic_condition == e, response_category == 'avg') %>% 
+      pull(response) %>% 
+      sample(numbSamples, replace = TRUE)
+    
+    pgSamp$moral <- df.exp1rating %>%
+      filter(scenario == c, epistemic_condition == e, response_category == 'morality') %>% 
+      pull(response) %>% 
+      sample(numbSamples, replace = TRUE)
+    
+    pgSamp$prob <- df.exp1rating %>%
+      filter(scenario == c, epistemic_condition == e, response_category == 'probability') %>% 
+      pull(response) %>% 
+      sample(numbSamples, replace = TRUE)
+    
+    pgSamp$norm <- df.exp1rating %>%
+      filter(scenario == c, epistemic_condition == e, response_category == 'normality') %>% 
+      pull(response) %>% 
+      sample(numbSamples, replace = TRUE)
+    
+    # Calculate modal distances for each action
+    for (a in 1:6){
+      modalDistTablei <- df.exp2mean %>%
+        filter(scenario == c, epistemic_condition == e) %>% 
+        pivot_wider(names_from = response_category, values_from = mean) %>% 
+        rename(mean = avg, moralityMean = morality, probabilityMean = probability, normalityMean = normality) %>% 
+        slice(a:a) %>%
+        mutate(
+          modalDistance = length(pgSamp$avg[mean < pgSamp$avg]) / numbSamples, 
+          moralDistance = length(pgSamp$moral[moralityMean < pgSamp$moral]) / numbSamples,
+          probDistance = length(pgSamp$prob[probabilityMean < pgSamp$prob]) / numbSamples,
+          normDistance = length(pgSamp$norm[normalityMean < pgSamp$norm]) / numbSamples
+        ) %>%
+        bind_rows(modalDistTablei)
+    }
+  }
+}
+
+
+```
+
+# Create Dataset with Mean Force Judgments
+```{r}
+df.forceMean <- df.exp2_long_avg %>%
+  filter(response_category == "hadto") %>%
+  group_by(scenario, epistemic_condition, action) %>%
+  summarise(hadTo = mean(response), .groups = "drop") 
+
+```
+
+#Join Force Mean Judgments and Modal Distance Table
+
+```{r}
+# joins with modal distance table to correlate each action
+
+df.forceSum <- df.forceMean %>%
+  right_join(modalDistTablei, by = c("action", "scenario", "epistemic_condition"))
+
+
+```
+
+# Create Table with correlations of modal distance measures and 'had to' judgments
+
+```{r}
+
+forceCorr <- df.forceSum %>% with(list(cor.test(modalDistance, hadTo),
+               cor.test(moralDistance, hadTo),
+               cor.test(probDistance, hadTo),
+               cor.test(normDistance, hadTo)))
+```
+
+# Figure with correlations between modal distancw and force judgments
+
+```{r fig4, echo=F,warning=F,message=F}
+
+fig4 <- df.forceSum %>% mutate(scenario=factor(scenario)) %>%
+                  ggplot(aes(y=hadTo,x=modalDistance)) +
+                  geom_point(aes(color=scenario)) +
+                  labs(y="Agreement agent was forced", 
+                       x="Modal distance of actual action") +
+                  geom_smooth(method=lm)+
+                  theme_bw() +
+                  theme(
+                    plot.background = element_blank()
+                    #,legend.position = "top"
+                    ,panel.grid.major = element_blank()
+                    ,panel.grid.minor = element_blank()
+                    ,axis.text=element_text(size=rel(1.25))
+                    #,axis.title=element_blank()
+                    #,axis.title.y=element_blank()
+                    #,axis.text.x=element_text(size=rel(1.5))
+                    ,axis.title = element_text(size=rel(1.25))
+                    ,axis.ticks = element_blank()
+                  ) +
+  facet_grid(~epistemic_condition)
+fig4 
+ggsave(fig4,file="fig4.jpg",width = 10,height = 8)
+
+
+```
+# Create dataframe with all mean and modal distance ratings from each epistemic condition in separate columns
+
+```{r}
+
+df.forceSum2 <- df.forceSum %>%
+  mutate(epistemic_condition = ifelse(epistemic_condition == "ignorance", "i", "k"))
+
+# Define the columns to be transformed
+value_columns <- c("hadTo", "mean", "moralityMean", "normalityMean", "probabilityMean",
+                   "modalDistance", "moralDistance", "probDistance", "normDistance")
+
+ 
+df.transformed <- df.forceSum2 %>%
+  pivot_longer(
+    cols = value_columns, 
+    names_to = "measure", 
+    values_to = "value"
+  ) %>%
+  mutate(new_col = paste(measure, epistemic_condition, sep = "_")) %>%
+  group_by(scenario, action, new_col) %>%
+  summarise(value = mean(as.numeric(value), na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(
+    names_from = "new_col",
+    values_from = "value",
+    id_cols = c("scenario", "action")
+  ) %>% 
+  mutate(modalDiff = modalDistance_i - modalDistance_k, # compute difference between original context modal distance and altered context modal distance for each action
+         htDiff = hadTo_i - hadTo_k) 
+
+```
+# Modal Comparison predicting judgments from same vs different epistemic context modal distance values
+
+```{r}
+# seeing whether modal distance values from original contexts are correlated with had to judgments from shifted contexts and vice versa
+acrossCorrs <- list(df.transformed %>% with(cor.test(modalDistance_i, hadTo_k)), df.transformed %>% with(cor.test(modalDistance_k, hadTo_i)))
+
+# full model predicting ignorant context force judgments
+
+lmer0 <- lmer(data=df.transformed, hadTo_i ~ modalDistance_i * modalDistance_k + (1|scenario))
+# model with interaction of ignorant modalDistance and knowledge modalDistance removed
+lmer1 <- lmer(data=df.transformed, hadTo_i ~ modalDistance_i  + modalDistance_k + (1|scenario))
+# knowledge  modal distance removed
+lmer2 <- lmer(data=df.transformed, hadTo_i ~ modalDistance_i  + (1|scenario))
+# ignorant modal distance removed
+lmer3 <- lmer(data=df.transformed, hadTo_i ~ modalDistance_k + (1|scenario))
+
+# full model predicting knowledge context force judgments
+lmer4 <- lmer(data=df.transformed, hadTo_k ~ modalDistance_i * modalDistance_k + (1|scenario))
+# model with interaction of ignorant modalDistance and knowledge modalDistance removed
+lmer5 <- lmer(data=df.transformed, hadTo_k ~ modalDistance_i  + modalDistance_k + (1|scenario))
+# knowledge modal distance removed
+lmer6 <- lmer(data=df.transformed, hadTo_k ~ modalDistance_i  + (1|scenario))
+# ignorant modal distance removed
+lmer7 <- lmer(data=df.transformed, hadTo_k ~ modalDistance_k + (1|scenario))
+
+htModelComps <- list(
+  # predicting ignorance context had to judgments:
+        anova(lmer0, lmer1), # effect of interaction
+        anova(lmer1, lmer2), # effect of knowledge modal distance
+        anova(lmer1, lmer3), # effect of ignorance modal distance
+  # predicting knowledge context had to judgments
+        anova(lmer4, lmer5), # effect of interaction
+        anova(lmer5, lmer6), # effect of knowledge modal distance
+        anova(lmer5, lmer7)  # effect of ignorance modal distance
+        )
+
+# correlation between difference and hadto judgments and difference in modal distance values for each action
+diffCorr <- df.transformed %>% with(cor.test(htDiff, modalDiff))
+
+
+lmer_null_i <- lmer(data=df.transformed, hadTo_i ~ (1 | scenario))
+anova(lmer_null_i, lmer2) # Tests whether ignorance modal distances matter at all
+anova(lmer_null_i, lmer3) # Tests whether knowledge modal distances matter at all
+
+lmer_null_k <- lmer(data=df.transformed, hadTo_k ~ (1 | scenario))
+anova(lmer_null_k, lmer6) # Tests whether ignorance modal distances matter at all
+anova(lmer_null_k, lmer7) # Tests whether ignorance modal distances matter at all
+```
+```{r}
+epistemicModalDiff <- data.frame(epistemicCondition = c(rep("Ignorance",2),rep("Knowledge",2)),
+                             modalDistance = c(rep(c("Knowledge","Ignorance"),2)),
+                             ChiSquareValue = c(htModelComps[[2]]$Chisq[2],htModelComps[[3]]$Chisq[2],
+                                                htModelComps[[5]]$Chisq[2],htModelComps[[6]]$Chisq[2])
+)
+
+epistemicModalDiff |> ggplot(aes(x=modalDistance,y=ChiSquareValue,color=modalDistance)) +
+                      facet_grid(~epistemicCondition) +
+                      geom_bar(stat="identity")
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Convert epistemicCondition to proper labels
+epistemicModalDiff <- epistemicModalDiff %>%
+  mutate(epistemicCondition = recode(epistemicCondition, 
+                                     "ignorance" = "Ignorance", 
+                                     "knowledge" = "Knowledge"))
+
+# Create the plot
+FigChiSq <- epistemicModalDiff %>% 
+  ggplot(aes(x = modalDistance, y = ChiSquareValue, color = modalDistance, fill=modalDistance)) +
+
+  # Jittered data points for visualization
+  #geom_jitter(position = position_jitter(0.2), size = 1.2, alpha = 0.2) +
+
+   geom_bar(stat="identity", colour = "black", alpha=0.7)+
+
+
+  # Faceting by modalDistance
+  facet_grid(~epistemicCondition) +  # Vertical stacking
+  
+  # Styling
+  theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.5)),
+    axis.title.x = element_text(size = rel(1.5)),
+    axis.title.y = element_text(size = rel(1.8)),
+    axis.text.x = element_text(size = rel(1.8)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.4)),
+    strip.text = element_text(size = rel(1.3)),  
+    strip.background = element_rect(fill = "white"), 
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
+  ) +
+
+  # Color settings
+  scale_fill_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
+  scale_color_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
+
+  # Labels
+  labs(y = "Chi-square Value")+
+  labs(x = "Modal Distance Values")
+
+
+# Print the figure
+FigChiSq
+
+# Save as PDF
+ggsave(plot = FigChiSq, "figChiSq.pdf", width = 8, height = 6)
+
+
+
+```
+
+
+#Create Dataframe with all correlations
+
+```{r}
+
+forceCorr <- tibble(
+  test = c("modalDistance_i & hadTo_i", "modalDistance_i & hadTo_k",
+           "modalDistance_k & hadTo_k", "modalDistance_k & hadTo_i"),
+  correlation = c(cor.test(~ modalDistance_i + hadTo_i, data = df.transformed)$estimate,
+                  cor.test(~ modalDistance_i + hadTo_k, data = df.transformed)$estimate,
+                  cor.test(~ modalDistance_k + hadTo_k, data = df.transformed)$estimate,
+                  cor.test(~ modalDistance_k + hadTo_i, data = df.transformed)$estimate),
+  p_value = c(cor.test(~ modalDistance_i + hadTo_i, data = df.transformed)$p.value,
+              cor.test(~ modalDistance_i + hadTo_k, data = df.transformed)$p.value,
+              cor.test(~ modalDistance_k + hadTo_k, data = df.transformed)$p.value,
+              cor.test(~ modalDistance_k + hadTo_i, data = df.transformed)$p.value)
+)
+
+```
+
+##### Correlation plot of difference in modal distance and force judgments (in CogSci Paper)
+
+```{r fig6, message=F,echo=F,warning=F}
+ 
+
+
+# graph comparing difference in modal distance scores to difference in force judgments between original and shifted contexts for each action
+figCompare <- df.transformed %>% mutate(scenario=factor(scenario)) %>%
+rename(Scenario = scenario) %>%
+  mutate(Scenario = as.factor(Scenario), # Ensure Scenario is a factor
+         Scenario = fct_relabel(Scenario, ~stringr::str_to_title(.)),
+         Scenario = fct_relevel(Scenario, paste("Scenario", 1:16))) %>%  # Relevel the factors in order
+                  ggplot(aes(y=htDiff,x=modalDiff)) +
+                  geom_point(aes(color=Scenario)) +
+                  labs(y="Difference in agreement that the agent was forced", 
+                       x="Difference in modal distance of actual action") +
+                  geom_smooth(method=lm, color="purple4")+
+                  theme_bw() +
+                  theme(
+                    plot.background = element_blank()
+                    #,legend.position = "top"
+                    ,panel.grid.major = element_blank()
+                    ,panel.grid.minor = element_blank(),
+    axis.title = element_text(size = rel(1.5), vjust = .9),
+    axis.text.x = element_text(size = rel(1.5)),
+    axis.text.y = element_text(size = rel(1.5)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.3)),
+    strip.text = element_text(size = rel(1.3)),  # Matches font size in facet panels
+    strip.background = element_rect(fill = "white", color = "black"), # New panel background color
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)  # Custom title
+                  )+
+    scale_color_viridis(discrete = TRUE)+
+  scale_fill_viridis(discrete = TRUE )
+
+figCompare
+
+ggsave(figCompare, file="figCorrelation.pdf", width = 10, height = 8, units = "in")
+
+```
+
+
+####FIG_L
+# Modal Distance Plot for Scenario 5 with abnormal action 
+
+```{r fig6, message=F,echo=F,warning=F}
+# Figure 6: Shifted modal distance figure
+
+## Here is a fig trying to illustrate the shifting of modal space
+
+
+### AltPgL
+df.exp1rating_i <-df.exp1rating %>% 
+  filter(epistemic_condition=="ignorance")
+
+#Pgl
+df.exp1rating_k <-df.exp1rating %>% 
+  filter(epistemic_condition=="knowledge")
+
+#AltevSum
+df.exp2rating_i <-df.exp2rating %>% 
+  filter(epistemic_condition=="ignorance")
+#EvSum
+df.exp2rating_k <-df.exp2rating %>% 
+  filter(epistemic_condition=="knowledge")
+  
+
+contextChoice <- "scenario 5"
+
+densitiy_i <- df.exp1rating_k %>% 
+  filter(scenario == contextChoice) %>%
+  filter(response_category == "avg") %>%
+  mutate(abnormality=100-response) %>%
+    ggplot(aes(x = abnormality)) +
+      geom_density(lwd = 1, alpha = 0.5,fill="purple4",color="purple4") +
+      geom_density(data= df.exp1rating_i %>% filter(scenario == contextChoice) %>%  filter(response_category == "avg") %>%
+                                 mutate(abnormality=100-response), 
+                   lwd = 1, alpha = 0.4, fill="orange3",color="orange3") +
+      geom_label_repel(data = df.exp2rating_i %>% filter(scenario == contextChoice) %>%
+                               filter(response_category=="avg") %>%
+                               mutate(abnormality=100-mean
+                                      ,event=factor(action)
+                                      ,shortevent = factor(c("search water source",
+                                                                  "three-legged race",
+                                                                  "huddle",
+                                                                  "steal food & water",
+                                                                  "throw away food",
+                                                                  "find dry wood")[event])), 
+                 aes(x = abnormality, y = -0.0027, 
+                     label = shortevent), 
+                     seed=41,
+                     direction = "y",
+                     color="orange3",
+                     alpha=.8,
+                     size=rel(4),
+                 segment.colour = NA
+                ) +
+    #xlab("Abnormality Score") +
+    ylab("Density") +
+    theme_bw() +
+    theme(
+      plot.background = element_blank()
+      ,panel.grid.major = element_blank()
+      ,panel.grid.minor = element_blank()
+      ,legend.title=element_blank()
+      ,legend.text=element_text(size=rel(1.25))
+      ,axis.text.y=element_text(size=rel(1))
+      ,axis.title.x=element_blank()
+      ,axis.title.y=element_text(size=rel(.75))
+      ,axis.ticks = element_blank()
+      ,strip.text=element_text(size=rel(1))
+      ,axis.title=element_text(size=rel(1))
+     ,legend.position = "none"
+     ,plot.title = element_text(hjust = 0.5)
+    ) 
+
+modal_spaces <- densitiy_i +
+           geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+                      aes(x = 60, y = .009, xend = 50, yend = .0055),
+                  arrow = arrow(length = unit(0.45, "cm")),
+                  color="purple4", alpha=.35, linetype=1) +
+          annotate(geom="text", x=60, y=.0105, label="Ignorance \n Modal Space",
+            color="purple4",alpha=.75)  +
+        ## shifted modal distance
+           geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+              aes(x = 30, y = .014, xend = 12.5, yend = .0125),
+          arrow = arrow(length = unit(0.45, "cm")),
+          color="orange3", alpha=.55, linetype=1) +
+          annotate(geom="text", x=39, y=.014, label="Shifted \n Modal Space",
+            color="orange3",alpha=.85) 
+
+# ggsave(modal_spaces, file="figs/fig6top.jpg",width=7, height=4, units="in")
+
+
+## two illustrations of shifted modal distances:
+
+#table(evSum$action[evSum$context==contextChoice])
+actualAction1 <- "steal all of the food and water"
+
+actualAction <- actualAction1
+
+density_base_i <- df.exp1rating_k  %>% 
+  filter(scenario == contextChoice) %>%
+  filter(response_category== "avg") %>%
+  mutate(abnormality=100-response) %>%
+    ggplot(aes(x = abnormality)) +
+      geom_density(lwd = 1, alpha = 0.5,color="purple4") +
+      geom_label(data = df.exp2rating_k %>% filter(scenario == contextChoice & action==actualAction) %>%
+                                     filter(response_category=="avg") %>%
+                                     mutate(abnormality=100-mean,
+                                            action=factor(action),
+                                            action=factor(c("steal food & water")[action]) 
+                                            ), 
+                 aes(x = abnormality, y = -0.0005, 
+                     label = action), 
+                 color="purple4",
+                 alpha=.25,
+                 size=rel(4.5),
+                 segment.colour = NA
+                ) +
+      geom_density(data= df.exp1rating_i %>% filter(scenario == contextChoice) %>%  filter(response_category == "avg") %>%
+                                 mutate(abnormality=100-response), 
+                   lwd = 1, alpha = 0.5,color="orange3") +
+      geom_label(data = df.exp2rating_i %>% filter(scenario == contextChoice & action==actualAction) %>%
+                                     filter(response_category=="avg") %>%
+                                     mutate(abnormality=100-mean,
+                                            action=factor(action),
+                                            action=factor(c("steal food & water")[action])
+                                            ), 
+                 aes(x = abnormality, y = -0.002, 
+                     label = action), 
+                     color="orange3",
+                     alpha=.35,
+                     size=rel(4.5),
+                 segment.colour = NA
+                ) +
+    xlab("Abnormality Score") +
+    ylab("Density") +
+    theme_bw() +
+    theme(
+      plot.background = element_blank()
+      ,panel.grid.major = element_blank()
+      ,panel.grid.minor = element_blank()
+      ,legend.title=element_blank()
+      ,legend.text=element_text(size=rel(1.3))
+      ,axis.text.y=element_text(size=rel(1.5))
+      ,axis.text.x=element_text(size=rel(1.5))
+      ,axis.title.x=element_text(size=rel(1.3))
+      ,axis.title.y=element_text(vjust=.9,size=rel(1.3))
+      ,axis.ticks = element_blank()
+      ,strip.text=element_text(size=rel(1.3))
+      ,axis.title=element_text(size=rel(1.3))
+     ,legend.position = "none"
+     ,plot.title = element_text(hjust = 0.5)
+    ) 
+
+# Extracting the modal distance curves from the graph -- original context
+o.infoC <- ggplot_build(density_base_i)$data[[1]] ## this is the density curve
+o.infoA <- ggplot_build(density_base_i)$data[[2]] ## this is the actual action point
+o.c1h.xmax <- o.infoA$x[1] ##  get the abnormality score
+o.c1h.info <- o.infoC %>% filter(x < o.c1h.xmax) ## get the modal distance curve
+
+# Extracting the modal distance curves from the graph -- shifted context
+s.infoC <- ggplot_build(density_base_i)$data[[3]] ## this is the density curve
+s.infoA <- ggplot_build(density_base_i)$data[[4]] ## this is the actual action point
+s.c1h.xmax <- s.infoA$x[1] ## get the abnormality score
+s.c1h.info <- s.infoC %>% filter(x < s.c1h.xmax) # get the modal distance curve
+
+
+figL <- density_base_i +
+      ## original modal distance
+         geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+                      aes(x = 60, y = .0080, xend = 50, yend = .0050),
+                  arrow = arrow(length = unit(0.40, "cm")),
+                  color="purple4", alpha=.75, linetype=1) +
+          geom_vline(xintercept=o.c1h.xmax,alpha=.5,linetype=3,color="purple4") +
+          geom_area(data = o.c1h.info, aes(x=x, y=y), fill="purple4",alpha=.4) +
+          annotate(geom="text", x=65, y=.010, label="Knowledge \n Modal Distance",
+            color="purple4",alpha=.75, size = 6)  +
+        ## shifted modal distance
+           geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+              aes(x = 30, y = .015, xend = 9.5, yend = .014),
+          arrow = arrow(length = unit(0.45, "cm")),
+          color="orange3", alpha=.35, linetype=1) +
+          geom_vline(xintercept=s.c1h.xmax,alpha=.5,linetype=3,color="orange3") +
+          geom_area(data = s.c1h.info, aes(x=x, y=y), fill="orange3",alpha=.4) +
+          annotate(geom="text", x=43, y=.016, label="Ignorance \n Modal Distance",
+            color="orange3",alpha=.75, size = 6)
+  
+
+# ggsave(fig6bottomL, file="figs/fig6bottomL.jpg",width=4.5, height=6, units="in")
+
+ggsave(figL, file="figModalDistance_L.pdf", width = 11, height = 7, units = "in")
+
+
+
+# the following figures are not included in the main text or appendix
+
+
+```
+
+
+####FIG_R
+# Modal Distance Plot for Scenario 5 with normal action 
+
+```{r}
+contextChoice <- "scenario 5"
+
+densitiy_i2 <- df.exp1rating_k %>% 
+  filter(scenario == contextChoice) %>%
+  filter(response_category == "avg") %>%
+  mutate(abnormality=100-response) %>%
+    ggplot(aes(x = abnormality)) +
+      geom_density(lwd = 1, alpha = 0.5,fill="purple4",color="purple4") +
+      geom_density(data= df.exp1rating_i %>% filter(scenario == contextChoice) %>%  filter(response_category == "avg") %>%
+                                 mutate(abnormality=100-response), 
+                   lwd = 1, alpha = 0.4, fill="orange3",color="orange3") +
+      geom_label_repel(data = df.exp2rating_i %>% filter(scenario == contextChoice) %>%
+                               filter(response_category=="avg") %>%
+                               mutate(abnormality=100-mean
+                                      ,event=factor(action)
+                                      ,shortevent = factor(c("search water source",
+                                                                  "three-legged race",
+                                                                  "huddle",
+                                                                  "steal food & water",
+                                                                  "throw away food",
+                                                                  "find dry wood")[event])), 
+                 aes(x = abnormality, y = -0.0027, 
+                     label = shortevent), 
+                     seed=41,
+                     direction = "y",
+                     color="orange3",
+                     alpha=.8,
+                     size=rel(4),
+                 segment.colour = NA
+                ) +
+    #xlab("Abnormality Score") +
+    ylab("Density") +
+    theme_bw() +
+    theme(
+      plot.background = element_blank()
+      ,panel.grid.major = element_blank()
+      ,panel.grid.minor = element_blank()
+      ,legend.title=element_blank()
+      ,legend.text=element_text(size=rel(1.25))
+      ,axis.text.y=element_text(size=rel(1.5))
+      ,axis.title.x=element_blank()
+      ,axis.title.y=element_text(size=rel(.75))
+      ,axis.ticks = element_blank()
+      ,strip.text=element_text(size=rel(1))
+      ,axis.title=element_text(size=rel(1))
+     ,legend.position = "none"
+     ,plot.title = element_text(hjust = 0.5)
+    ) 
+
+modal_spaces2 <- densitiy_i2 +
+           geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+                      aes(x = 60, y = .009, xend = 50, yend = .0055),
+                  arrow = arrow(length = unit(0.45, "cm")),
+                  color="purple4", alpha=.35, linetype=1) +
+          annotate(geom="text", x=60, y=.0105, label="Ignorance \n Modal Space",
+            color="purple4",alpha=.75)  +
+        ## shifted modal distance
+           geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+              aes(x = 30, y = .014, xend = 12.5, yend = .0125),
+          arrow = arrow(length = unit(0.45, "cm")),
+          color="orange3", alpha=.55, linetype=1) +
+          annotate(geom="text", x=39, y=.014, label="Shifted \n Modal Space",
+            color="orange3",alpha=.85) 
+
+# ggsave(modal_spaces, file="figs/fig6top.jpg",width=7, height=4, units="in")
+
+
+## two illustrations of shifted modal distances:
+
+#table(evSum$action[evSum$context==contextChoice])
+actualAction12 <- "throw away all of the food"
+
+actualAction2 <- actualAction12
+
+density_base_i2 <- df.exp1rating_k  %>% 
+  filter(scenario == contextChoice) %>%
+  filter(response_category== "avg") %>%
+  mutate(abnormality=100-response) %>%
+    ggplot(aes(x = abnormality)) +
+      geom_density(lwd = 1, alpha = 0.5,color="purple4") +
+      geom_label(data = df.exp2rating_k %>% filter(scenario == contextChoice & action==actualAction2) %>%
+                                     filter(response_category=="avg") %>%
+                                     mutate(abnormality=100-mean,
+                                            action=factor(action),
+                                            action=factor(c("throw away food")[action]) 
+                                            ), 
+                 aes(x = abnormality, y = -0.0005, 
+                     label = action), 
+                 color="purple4",
+                 alpha=.25,
+                 size=rel(4.5),
+                 segment.colour = NA
+                ) +
+      geom_density(data= df.exp1rating_i %>% filter(scenario == contextChoice) %>%  filter(response_category == "avg") %>%
+                                 mutate(abnormality=100-response), 
+                   lwd = 1, alpha = 0.5,color="orange3") +
+      geom_label(data = df.exp2rating_i %>% filter(scenario == contextChoice & action==actualAction2) %>%
+                                     filter(response_category=="avg") %>%
+                                     mutate(abnormality=100-mean,
+                                            action=factor(action),
+                                            action=factor(c("throw away food")[action])
+                                            ), 
+                 aes(x = abnormality, y = -0.002, 
+                     label = action), 
+                     color="orange3",
+                     alpha=.35,
+                     size=rel(4.5),
+                 segment.colour = NA
+                ) +
+    xlab("Abnormality Score") +
+    ylab("Density") +
+    theme_bw() +
+    theme(
+      plot.background = element_blank()
+      ,panel.grid.major = element_blank()
+      ,panel.grid.minor = element_blank()
+      ,legend.title=element_blank()
+      ,legend.text=element_text(size=rel(1.5))
+      ,axis.text.y=element_text(size=rel(1.5))
+      ,axis.text.x=element_text(size=rel(1.5))
+      ,axis.title.x=element_text(size=rel(1.3))
+      ,axis.title.y=element_text(vjust=.9,size=rel(1.3))
+      ,axis.ticks = element_blank()
+      ,strip.text=element_text(size=rel(1.3))
+      ,axis.title=element_text(size=rel(1.3))
+     ,legend.position = "none"
+     ,plot.title = element_text(hjust = 0.5)
+    ) 
+
+# Extracting the modal distance curves from the graph -- original context
+o.infoC2 <- ggplot_build(density_base_i2)$data[[1]] ## this is the density curve
+o.infoA2 <- ggplot_build(density_base_i2)$data[[2]] ## this is the actual action point
+o.c1h.xmax2 <- o.infoA2$x[1] ##  get the abnormality score
+o.c1h.info2 <- o.infoC2 %>% filter(x < o.c1h.xmax2) ## get the modal distance curve
+
+# Extracting the modal distance curves from the graph -- shifted context
+s.infoC2 <- ggplot_build(density_base_i2)$data[[3]] ## this is the density curve
+s.infoA2 <- ggplot_build(density_base_i2)$data[[4]] ## this is the actual action point
+s.c1h.xmax2 <- s.infoA2$x[1] ## get the abnormality score
+s.c1h.info2 <- s.infoC2 %>% filter(x < s.c1h.xmax2) # get the modal distance curve
+
+
+figR <- density_base_i2 +
+      ## original modal distance
+         geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+                      aes(x = 60, y = .0080, xend = 50, yend = .0050),
+                  arrow = arrow(length = unit(0.40, "cm")),
+                  color="purple4", alpha=.75, linetype=1) +
+          geom_vline(xintercept=o.c1h.xmax2,alpha=.5,linetype=3,color="purple4") +
+          geom_area(data = o.c1h.info2, aes(x=x, y=y), fill="purple4",alpha=.4) +
+          annotate(geom="text", x=65, y=.010, label="Knowledge \n Modal Distance",
+            color="purple4",alpha=.75, size = 6)  +
+        ## shifted modal distance
+           geom_segment(data=data.frame(), ##otherwise you draw this segment for every row of data...
+              aes(x = 30, y = .015, xend = 8, yend = .014),
+          arrow = arrow(length = unit(0.45, "cm")),
+          color="orange3", alpha=.35, linetype=1) +
+          geom_vline(xintercept=s.c1h.xmax2,alpha=.5,linetype=3,color="orange3") +
+          geom_area(data = s.c1h.info2, aes(x=x, y=y), fill="orange3",alpha=.4) +
+          annotate(geom="text", x=43, y=.016, label="Ignorance \n Modal Distance",
+            color="orange3",alpha=.75, size = 6)
+  
+
+# ggsave(fig6bottomL, file="figs/fig6bottomL.jpg",width=4.5, height=6, units="in")
+
+ggsave(figR, file="figModalDistance_R.pdf", width = 11, height = 7, units = "in")
+
+```
+
+# Add both FigL and FigR together (in Cogsci paper)
+
+```{r}
+
+figR<- figR+ theme(axis.title.y = element_blank())
+library(gridExtra)
+combined_plot <- grid.arrange(figL, figR, ncol = 2)
+
+# Save the combined plot as a single image
+
+ggsave(plot = combined_plot, "figModalDistance.pdf", width = 16, height = 8)
+
+# Display the combined plot
+combined_plot
+```
+#Create Force Judgment plot
+
+```{r}
+
+FigF1 <- df.exp2_wide %>% 
+  filter(scenario == "scenario 5") %>% 
+  filter(action %in% c("steal all of the food and water", "throw away all of the food")) %>% 
+  mutate(action = recode(action, "throw away all of the food" = "throw away food")) %>% 
+  mutate(action = factor(action, levels = c("steal all of the food and water", "throw away food"))) %>% 
+
+  mutate(epistemic_condition = recode(epistemic_condition, 
+                                    "ignorance" = "Ignorance", 
+                                    "knowledge" = "Knowledge")) %>% 
+  mutate(hadto = as.numeric(hadto)) %>% 
+  ggplot(aes(x = epistemic_condition, y = hadto, color = epistemic_condition, fill=epistemic_condition)) +
+  
+   stat_summary(fun.y = mean, geom = "bar", position = "dodge", colour = "black", alpha=0.7) +
+  stat_summary(
+  fun.data = mean_se,  
+  geom = "errorbar", 
+  position = position_dodge(0.9), 
+  width = 0.2,
+  colour = "black"
+)+
+
+  # Jittered data points
+  geom_jitter(position = position_jitter(0.2), size = 1.2, alpha = 0.2) +
+
+  # Faceting
+  #facet_wrap(~action)+ 
+  facet_wrap(~action, ncol = 1)+  # Ensures vertical stacking with titles on top
+
+
+  # Styling
+  theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.5)),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = rel(1.4)),
+    axis.text.x =  element_text(size = rel(1.5)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.4)),
+    strip.text = element_text(size = rel(1.3)),  
+    strip.background = element_rect(fill = "white", color = "black"), 
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
+  ) +
+
+
+  # Color settings
+scale_fill_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
+scale_color_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4"))+
+
+
+  # Labels
+  labs(y = "Had To Rating")
+
+# Print the figure
+FigF1
+
+ggsave(plot = FigF1, "FigF1.pdf", width = 6, height = 8)
+  # Labels
+  labs(y = "Had To Rating")
+
+# Print the figure
+FigF1
+
+ggsave(plot = FigF1, "FigF1.pdf", width = 6, height = 8)
+
+
+```
+# Merge modal distance plot with poit range plot
+
+```{r}
+
+library(grid)
+
+
+modalmeans_plot2 <- arrangeGrob(
+  combined_plot, FigF1, 
+  ncol = 2, 
+  widths = c(3, 1)  # Makes `combined_plot` twice as wide as `FigF`
+)
+# Save the combined plot as a single image
+
+pdf_width <- 18  # Total width of the final image
+pdf_height <- pdf_width / (3 + 1) * 2  # Keeps the width-to-height ratio consistent
+
+# Save the combined plot as a PDF
+ggsave("figModalDistanceMean2.pdf", plot = modalmeans_plot2, 
+       width = pdf_width, height = pdf_height)
+# Display the combined plot
+# Display the combined plot
+grid.newpage()  # Ensures a fresh plotting space
+grid.draw(modalmeans_plot2)  # Renders the plot
+
+```
+  
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+
+FigF <- df.exp2_wide %>% 
+  filter(scenario == "scenario 5") %>% 
+  filter(action %in% c("steal all of the food and water", "attempt to search for a water source")) %>% 
+  mutate(action = recode(action, "attempt to search for a water source" = "search for water source")) %>% 
+  mutate(action = factor(action, levels = c("steal all of the food and water", "search for water source"))) %>% 
+
+
+  mutate(epistemic_condition = recode(epistemic_condition, 
+                                    "ignorance" = "Ignorance", 
+                                    "knowledge" = "Knowledge")) %>% 
+  mutate(hadto = as.numeric(hadto)) %>% 
+  ggplot(aes(x = epistemic_condition, y = hadto, color = epistemic_condition)) +
+  
+  # Jittered data points
+  geom_jitter(position = position_jitter(0.2), size = 1.2, alpha = 0.2) +
+
+  # Mean & SD as error bars
+  stat_summary(
+    fun.data = mean_cl_boot,  # Computes bootstrapped confidence intervals
+    geom = "pointrange", size = 0.8
+  ) +
+
+  # Faceting
+facet_wrap(~action, ncol = 1)+  # Ensures vertical stacking with titles on top
+#facet_wrap(~action)+  # Ensures vertical stacking with titles on top
+
+  # Styling
+  theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.5)),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = rel(1.8)),
+    axis.text.x =  element_text(size = rel(1.5)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.4)),
+    strip.text = element_text(size = rel(1.3)),  
+    strip.background = element_rect(fill = "white", color = "black"), 
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
+  ) +
+
+
+  # Color settings
+scale_fill_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
+scale_color_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4"))+
+
+
+  # Labels
+  labs(y = "Had To Rating")
+
+# Print the figure
+FigF
+
+ggsave(plot = FigF, "FigF.pdf", width = 6, height = 8)
+
+
+```
+# Merge modal distance plot with poit range plot
+
+```{r}
+
+library(grid)
+
+
+modalmeans_plot <- arrangeGrob(
+  combined_plot, FigF, 
+  ncol = 2, 
+  widths = c(3, 1)  # Makes `combined_plot` twice as wide as `FigF`
+)
+# Save the combined plot as a single image
+
+pdf_width <- 18  # Total width of the final image
+pdf_height <- pdf_width / (3 + 1) * 2  # Keeps the width-to-height ratio consistent
+
+# Save the combined plot as a PDF
+ggsave("figModalDistanceMean.pdf", plot = modalmeans_plot, 
+       width = pdf_width, height = pdf_height)
+# Display the combined plot
+# Display the combined plot
+grid.newpage()  # Ensures a fresh plotting space
+grid.draw(modalmeans_plot)  # Renders the plot
+
+```
+
