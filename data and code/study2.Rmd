@@ -26,6 +26,10 @@ library("gridExtra")
 library("ggplot2")
 library("dplyr")
 library("viridis")
+library("ggrepel")
+library("grid")
+
+
 ```
 
 ## Study 2: Action Ratings and Force Judgment
@@ -432,9 +436,10 @@ df.exp2rating <- df.exp2_long_avg %>%
 
 ```
 
+#Read in Ratings from Study 1
+
 ```{r}
 df.exp1rating <- read.csv("df.exp1_actions.csv")
-df.exp1rating2 <- read.csv("df.exp1rating.csv", stringsAsFactors = FALSE)
 
 ```
 
@@ -643,12 +648,9 @@ epistemicModalDiff <- data.frame(epistemicCondition = c(rep("Ignorance",2),rep("
 
 ```
 
-
+#Create Chi square Plot
 
 ```{r}
-# Load necessary libraries
-library(ggplot2)
-library(dplyr)
 
 # Convert epistemicCondition to proper labels
 epistemicModalDiff <- epistemicModalDiff %>%
@@ -728,11 +730,10 @@ forceCorr <- tibble(
 
 ```
 
-##### Correlation plot of difference in modal distance and force judgments (in CogSci Paper)
+##### Correlation plot of difference in modal distance and force judgments (used to be in CogSci Paper)
 
 ```{r fig6, message=F,echo=F,warning=F}
  
-
 
 # graph comparing difference in modal distance scores to difference in force judgments between original and shifted contexts for each action
 figCompare <- df.transformed %>% mutate(scenario=factor(scenario)) %>%
