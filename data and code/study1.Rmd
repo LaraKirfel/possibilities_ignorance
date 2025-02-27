@@ -25,13 +25,8 @@ library("afex")
 library("janitor")
 library("here")
 
-
 ```
 
-```{r}
-knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
-
-```
 
 
 ## Study 1: Possibility Generation
@@ -40,14 +35,9 @@ knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$p
 
 ```{r, importing data, message=FALSE, warning=FALSE, include = FALSE}
 ## Cleaning Data and Prepare Dataframes for Demographics and Analysis
-knitr::opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
-
-file.exists("study1.csv")
-getwd()
-
 
 ######################################   Read in data from study 1
-df.data1 <- read_csv(here("data and code", "study1.csv")) %>% 
+df.data1 <- read_csv("study1.csv") %>% 
   filter(row_number() > 2) %>% # additional rows in qualtrics csv 
   clean_names() %>% 
     filter(!status =="Survey Preview", #exclude bot fails,
@@ -164,16 +154,12 @@ mutate(epistemic_condition = case_when(
   
 #is.list(df.exp1$probability) 
 
-write.csv(df.exp1, "df.exp1.csv", row.names = FALSE)
+
+##### Export Dataset for further analysis of participants' generated responses
+#write.csv(df.exp1, "df.exp1.csv", row.names = FALSE)
 
 
 ```
-
-```{r}
-
-```
-
-
 
 ## Create Long Dataframe
 
@@ -227,29 +213,15 @@ df.exp1_long_avg = df.exp1_wide %>%
 ```{r}
 
 df.exp1_long_exp <- df.exp1_long_avg  %>% 
-  filter(response_category != "generated response")
+  filter(response_category != "generated response") %>% 
+    mutate(epistemic_condition = tolower(epistemic_condition))
+  
 
 write.csv(df.exp1_long_exp, "df.exp1_actions.csv", row.names = FALSE)
 
 ```
 
-#Plot rating distributions in Knowledge and Ignorance condition (just to check)
 
-```{r}
-figS0 <- df.exp1_long_avg%>% 
- mutate(question = fct_recode(response_category,
-                               value = "avg"), # Recoding 'avg' to 'value'
-    question = factor(question, levels = c("normality", "morality", "probability", "value"))) %>% 
-  filter(scenario =="scenario 7") %>% 
-    ggplot(aes(x = response, fill = question, color = question)) +
-      geom_histogram(position = "identity",
-                     alpha = 0.33,
-                     bins = 15) +
-   facet_grid(question ~ epistemic_condition)
-
-figS0
-
-```
 # Calculate Proportion of Best Option 
 `
 ```{r}
