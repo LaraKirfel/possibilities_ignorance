@@ -4,7 +4,7 @@ This repository contains the experiment, data, analyses and figured for the CogS
 
 ## Abstract
 
-What someone knew matters for how we hold them responsible. In three studies, we explore people’s responsibility judgments for negative outcomes to knowledgeable versus ignorant agents. We manipulate whether agents arrived at their knowledge state unintentionally or willfully. In Experiment 1, agents who knew about the harmful consequences of their actions were judged highly responsible no matter how they came to know. In contrast, willfully ignorant agents were judged more responsible than unintentionally ignorant agents. Participants inferred that willfully ignorant agents were more likely to believe that their action might cause harm. When we explicitly stipulate the agents’ beliefs in Experiment 2, the ‘willful ignorance’ effect reduces but persists. Participants inferred that the willfully ignorant agent was more likely to have acted anyhow even if they had known. Explicitly stating whether the agent’s action depended on their knowledge further reduced the ‘willful ignorance’ effect in Experiment 3.
+People’s judgments about what an agent can do are shaped by various constraints, including probability, morality, and normality. However, little is known about how these representations of possible actions—modal space representations—are influenced by an agent’s knowledge of their environment. Across two studies, we investigated whether epistemic constraints systematically shift modal space representations and whether these shifts affect high-level force judgments. Study 1 replicated prior findings that the first actions that come to mind are perceived as the most probable, moral, and normal, and demonstrated that these constraints apply regardless of an agent’s epistemic state. Study 2 showed that limiting an agent’s knowledge changes which actions people perceive to be possible for the agent, which in turn affects whether people judged an agent as being ``forced'' to take a particular action. These findings highlight the role of Theory of Mind in modal cognition, revealing how epistemic constraints shape perceptions of possibilities.
 
 ## Pre-registrations 
 
@@ -23,19 +23,17 @@ What someone knew matters for how we hold them responsible. In three studies, we
 ## Repository structure 
 
 ```
-├── code
+├── data and code
 │   ├── R
-│   ├── bash
+│   ├── data
 │   ├── experiments
 │   └── python
-├── data
-├── docs
-│   ├── experiment1
-│   ├── experiment2a
-│   ├── experiment2b
-│   └── experiment3
-└── figures
-    └── plots
+├── materials
+│   ├── study 1
+│   ├── study 2
+├── figures
+│   └── plots
+└── CogSci paper
 ```
 
 ### code 
