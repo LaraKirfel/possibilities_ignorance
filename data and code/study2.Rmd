@@ -313,65 +313,6 @@ df.exp2rating <- df.exp2_long_avg %>%
 ```
 
 
-
-# Density plot showing the distribution of participant's judgments in scenario 5 (potential use for CogSci paper)
-
-```{r}
-
-#scenarios in which there is a visible difference, with ignorance being rated higher 4, 5, 14,16
-#scenarios in which there is a visible difference, with knowledge being rated highere: 3, 1
-library("viridis")           
-
-figS2 <- df.exp2_long_avg %>%
-  filter(scenario == "scenario 1") %>%
-  filter(response_category != "avg") %>%
-  mutate(response_category = fct_recode(response_category, 
-                                        "forced to" = "hadto")) %>% 
-  mutate(response_category = fct_relevel(response_category, 
-                                         "morality", "probability", "normality", "forced to")) %>%          
-  ggplot(aes(x = response, fill = epistemic_condition)) +
-  geom_density(alpha = .4) +
-  geom_vline(
-    data = df.exp2rating %>%
-    filter(scenario == "scenario 5") %>% 
-    filter(response_category != "avg") %>% 
-      mutate(response_category = fct_recode(response_category, 
-                                        "forced to" = "hadto")) %>% 
-  mutate(response_category = fct_relevel(response_category, 
-                                         "morality", "probability", "normality", "forced to")),
-    aes(xintercept = mean, color = epistemic_condition),
-    linetype = "dotted",
-    size = 1
-  ) +
-    theme_bw() +
-  theme(
-    plot.background = element_blank(),
-    legend.position = "top",
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_text(size = rel(1.4)),
-    axis.title = element_text(size = rel(1.5), vjust = .9),
-    axis.text.x = element_text(size = rel(1.5)),
-    axis.ticks = element_blank(),
-    legend.text = element_text(size = rel(1.3)),
-    legend.title = element_text(size = rel(1.3)),
-    strip.text = element_text(size = rel(1.3)),  # Matches font size in facet panels
-    strip.background = element_rect(fill = "white", color = "black"), # New panel background color
-    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # Custom title
-    plot.subtitle = element_text(size = 14, hjust = 0.5)  # Custom subtitle
-  ) +
-  scale_color_viridis(discrete = TRUE, option = "D")+
-  scale_fill_viridis(discrete = TRUE ) +
-  facet_wrap(~ response_category)+
-  labs(title = "Scenario 5: Brad")
-
-figS2
-
-ggsave(figS2, file="figContextRatings.pdf", width = 8, height = 8, units = "in")
-
-
-```
-
 #Create Dataframe with mean ratings
 
 ```{r}
