@@ -380,7 +380,7 @@ lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(norma
   
 ```
 
-# Figure showing Ratings of 5 generated actions by epistemic conditions (in CogSci paper)
+# Figure showing Ratings of 5 generated actions by epistemic conditions
 
 ```{r fig1, echo=F, warning=F, message=F, fig.width=6.5,fig.height=5.25}
 #install.packages("viridis")  # Install
@@ -426,11 +426,11 @@ scale_color_viridis(discrete = TRUE, option = "D")+
   scale_fill_viridis(discrete = TRUE) +
   facet_wrap(~ epistemic_condition)
 
-ggsave(fig1, file = "figMNPratings.pdf", width = 11, height = 7)
+ggsave(fig1, file ="../figures/plots/figMNPratings.pdf", width = 11, height = 7)
 
 fig1
 ```
-# Figure Proportion of Best Option by Action Generation Number (in Cogsci paper)
+# Figure Proportion of Best Option by Action Generation Number
 
 ```{r}
 figS1 <- df.perBest %>%
@@ -458,7 +458,7 @@ figS1 <- df.perBest %>%
   scale_fill_viridis(discrete = TRUE) 
 
 print(figS1)
-ggsave(figS1, file = "figBest.pdf", width = 7, height = 7)
+ggsave(figS1, file = "../figures/plots/figBest.pdf", width = 7, height = 7)
 ```
 
 
