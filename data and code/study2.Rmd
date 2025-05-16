@@ -28,11 +28,9 @@ library("dplyr")
 library("viridis")
 library("ggrepel")
 library("grid")
-
-
 ```
 
-## Study 2: Action Ratings and Force Judgment
+# Study 2: Action Ratings and Force Judgment
 
 
 ```{r, message=FALSE, warning=FALSE, include = FALSE}
@@ -45,8 +43,8 @@ options(dplyr.summarise.inform = F)
 options(contrasts = c("contr.sum", "contr.poly"))
 ```
 
-
-#Read in Data from Study 2, create Demographics Dataframe
+# Data
+## Read in Data
 
 ```{r, importing data, message=FALSE, warning=FALSE, include = FALSE}
 ## Cleaning Data and Prepare Dataframes for Demographics and Analysis
@@ -87,7 +85,8 @@ df.desc2<-df.data2 %>%
 
 
 ```
-# Create dataframe for analysis
+
+## Edit Data
 
 ```{r, warning=FALSE, message=FALSE, include=FALSE}
 # Contuinued Data Editing for Main Analysis 
@@ -129,7 +128,7 @@ mutate(epistemic_condition = case_when(
  
 ```
 
-# Create Dataframe with Actual Actions used in Study 2 and assignment to participants
+## Create Dataframe with Actual Actions used in Study 2 and assignment to participants
 
 ```{r}
 df.exp2action = df.data2 %>% 
@@ -157,7 +156,7 @@ df.exp2action = df.data2 %>%
   
 ```
 
-#Merge Dataframe with Action Ratings and the actual actions participants were assigned to
+## Merge Dataframe with Action Ratings and the actual actions participants were assigned to
 
 ```{r}
 
@@ -289,7 +288,7 @@ df.exp2_wide = df.exp2_long %>%
 
 ```
 
-## Create Long Dataframe with avg rating
+## Create Long Dataframe + avg rating
 
 ```{r}
 
@@ -302,7 +301,7 @@ df.exp2_long_avg <- df.exp2_wide %>%
   ) 
 ```
 
-#Create Long Dataframe with all ratings
+## Create Long Dataframe with all ratings
 
 ```{r}
 df.exp2rating <- df.exp2_long_avg %>% 
@@ -312,8 +311,7 @@ df.exp2rating <- df.exp2_long_avg %>%
     as.data.frame() 
 ```
 
-
-#Create Dataframe with mean ratings
+## Create Dataframe with mean ratings
 
 ```{r}
 
@@ -323,10 +321,9 @@ df.exp2mean <- df.exp2_long_avg %>%
   summarise(mean = mean(response), .groups = "drop") %>%
     ungroup() 
 
-
 ```
 
-# Create Dataframe with mean ratings, min, max etc for both epistemic conditions and all rating types
+## Create Dataframe with mean ratings, min, max etc for both epistemic conditions and all rating types
 
 ```{r}
 # Create a function to calculate stats for a given condition and response category
@@ -361,7 +358,7 @@ stats_table
 
 ```
 
-#Create Dataset with means for Modal Distance Plot
+## Create Dataset with means for Modal Distance Plot
 
 ```{r modalDistancePlot, message=F,warning=F,echo=F, fig.width=6,fig.height=5.25}
 ## Figure 4
@@ -377,15 +374,14 @@ df.exp2rating <- df.exp2_long_avg %>%
 
 ```
 
-#Read in Ratings from Study 1
+## Read in Ratings from Study 1
 
 ```{r}
 df.exp1rating <- read.csv("df.exp1_actions.csv")
 
 ```
 
-
-# Create Modal Distance Measure and Modal Distance Table from Study 1 Ratings
+## Create Modal Distance Measure and Modal Distance Table from Study 1 Ratings
 
 ```{r modalDistance, message=F,warning=F,echo=F}
 ### Calculate contextual and epistemic modal distance for every action
@@ -441,7 +437,8 @@ for (c in unique(df.exp1rating$scenario)) {
 
 ```
 
-# Create Dataset with Mean Force Judgments
+## Create Dataset with Mean Force Judgments
+
 ```{r}
 df.forceMean <- df.exp2_long_avg %>%
   filter(response_category == "hadto") %>%
@@ -450,7 +447,7 @@ df.forceMean <- df.exp2_long_avg %>%
 
 ```
 
-#Join Force Mean Judgments and Modal Distance Table
+## Join Force Mean Judgments and Modal Distance Table
 
 ```{r}
 # joins with modal distance table to correlate each action
@@ -461,7 +458,7 @@ df.forceSum <- df.forceMean %>%
 
 ```
 
-# Create Table with correlations of modal distance measures and 'had to' judgments
+## Create Table with correlations of modal distance measures and 'had to' judgments
 
 ```{r}
 
@@ -471,36 +468,8 @@ forceCorr <- df.forceSum %>% with(list(cor.test(modalDistance, hadTo),
                cor.test(normDistance, hadTo)))
 ```
 
-# Figure with correlations between modal distancw and force judgments
 
-```{r fig4, echo=F,warning=F,message=F}
-
-fig4 <- df.forceSum %>% mutate(scenario=factor(scenario)) %>%
-                  ggplot(aes(y=hadTo,x=modalDistance)) +
-                  geom_point(aes(color=scenario)) +
-                  labs(y="Agreement agent was forced", 
-                       x="Modal distance of actual action") +
-                  geom_smooth(method=lm)+
-                  theme_bw() +
-                  theme(
-                    plot.background = element_blank()
-                    #,legend.position = "top"
-                    ,panel.grid.major = element_blank()
-                    ,panel.grid.minor = element_blank()
-                    ,axis.text=element_text(size=rel(1.25))
-                    #,axis.title=element_blank()
-                    #,axis.title.y=element_blank()
-                    #,axis.text.x=element_text(size=rel(1.5))
-                    ,axis.title = element_text(size=rel(1.25))
-                    ,axis.ticks = element_blank()
-                  ) +
-  facet_grid(~epistemic_condition)
-fig4 
-ggsave(fig4,file="fig4.jpg",width = 10,height = 8)
-
-
-```
-# Create dataframe with all mean and modal distance ratings from each epistemic condition in separate columns
+## Create dataframe with all mean and modal distance ratings from each epistemic condition in separate columns
 
 ```{r}
 
@@ -530,7 +499,11 @@ df.transformed <- df.forceSum2 %>%
          htDiff = hadTo_i - hadTo_k) 
 
 ```
-# Modal Comparison predicting judgments from same vs different epistemic context modal distance values
+
+
+# Analysis
+
+## Modal Comparison predicting judgments from same vs different epistemic context modal distance values
 
 ```{r}
 # seeing whether modal distance values from original contexts are correlated with had to judgments from shifted contexts and vice versa
@@ -580,79 +553,7 @@ anova(lmer_null_k, lmer7) # Tests whether ignorance modal distances matter at al
 ```
 
 
-```{r}
-epistemicModalDiff <- data.frame(epistemicCondition = c(rep("Ignorance",2),rep("Knowledge",2)),
-                             modalDistance = c(rep(c("Knowledge","Ignorance"),2)),
-                             ChiSquareValue = c(htModelComps[[2]]$Chisq[2],htModelComps[[3]]$Chisq[2],
-                                                htModelComps[[5]]$Chisq[2],htModelComps[[6]]$Chisq[2])
-)
-
-```
-
-#Create Chi square Plot
-
-```{r}
-
-# Convert epistemicCondition to proper labels
-epistemicModalDiff <- epistemicModalDiff %>%
-  mutate(epistemicCondition = recode(epistemicCondition, 
-                                     "ignorance" = "Ignorance", 
-                                     "knowledge" = "Knowledge"))
-
-# Create the plot
-FigChiSq <- epistemicModalDiff %>% 
-  ggplot(aes(x = modalDistance, y = ChiSquareValue, color = modalDistance, fill=modalDistance)) +
-
-  # Jittered data points for visualization
-  #geom_jitter(position = position_jitter(0.2), size = 1.2, alpha = 0.2) +
-
-   geom_bar(stat="identity", colour = "black", alpha=0.7)+
-
-
-  # Faceting by modalDistance
-  facet_grid(~epistemicCondition) +  # Vertical stacking
-  
-  # Styling
-  theme_bw() +
-  theme(
-    plot.background = element_blank(),
-    legend.position = "none",
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_text(size = rel(1.5)),
-    axis.title.x = element_text(size = rel(1.5)),
-    axis.title.y = element_text(size = rel(1.8)),
-    axis.text.x = element_text(size = rel(1.8)),
-    axis.ticks = element_blank(),
-    legend.text = element_text(size = rel(1.3)),
-    legend.title = element_text(size = rel(1.4)),
-    strip.text = element_text(size = rel(1.3)),  
-    strip.background = element_rect(fill = "white"), 
-    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-    plot.subtitle = element_text(size = 14, hjust = 0.5)
-  ) +
-
-  # Color settings
-  scale_fill_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
-  scale_color_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
-
-  # Labels
-  labs(y = "Chi-square Value")+
-  labs(x = "Modal Distance Values")
-
-
-# Print the figure
-FigChiSq
-
-# Save as PDF
-ggsave(plot = FigChiSq, "figChiSq.pdf", width = 8, height = 6)
-
-
-
-```
-
-
-#Create Dataframe with all correlations
+## Create Dataframe with all correlations
 
 ```{r}
 
@@ -671,50 +572,10 @@ forceCorr <- tibble(
 
 ```
 
-##### Correlation plot of difference in modal distance and force judgments (used to be in CogSci Paper)
 
-```{r fig6, message=F,echo=F,warning=F}
- 
-
-# graph comparing difference in modal distance scores to difference in force judgments between original and shifted contexts for each action
-figCompare <- df.transformed %>% mutate(scenario=factor(scenario)) %>%
-rename(Scenario = scenario) %>%
-  mutate(Scenario = as.factor(Scenario), # Ensure Scenario is a factor
-         Scenario = fct_relabel(Scenario, ~stringr::str_to_title(.)),
-         Scenario = fct_relevel(Scenario, paste("Scenario", 1:16))) %>%  # Relevel the factors in order
-                  ggplot(aes(y=htDiff,x=modalDiff)) +
-                  geom_point(aes(color=Scenario)) +
-                  labs(y="Difference in agreement that the agent was forced", 
-                       x="Difference in modal distance of actual action") +
-                  geom_smooth(method=lm, color="purple4")+
-                  theme_bw() +
-                  theme(
-                    plot.background = element_blank()
-                    #,legend.position = "top"
-                    ,panel.grid.major = element_blank()
-                    ,panel.grid.minor = element_blank(),
-    axis.title = element_text(size = rel(1.5), vjust = .9),
-    axis.text.x = element_text(size = rel(1.5)),
-    axis.text.y = element_text(size = rel(1.5)),
-    axis.ticks = element_blank(),
-    legend.text = element_text(size = rel(1.3)),
-    legend.title = element_text(size = rel(1.3)),
-    strip.text = element_text(size = rel(1.3)),  # Matches font size in facet panels
-    strip.background = element_rect(fill = "white", color = "black"), # New panel background color
-    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)  # Custom title
-                  )+
-    scale_color_viridis(discrete = TRUE)+
-  scale_fill_viridis(discrete = TRUE )
-
-figCompare
-
-ggsave(figCompare, file="figCorrelation.pdf", width = 10, height = 8, units = "in")
-
-```
-
-
-####FIG_L
-# Modal Distance Plot for Scenario 5 with abnormal action 
+# Figures
+##FIG_L
+## Modal Distance Plot for Scenario 5 with abnormal action 
 
 ```{r fig6, message=F,echo=F,warning=F}
 # Figure 6: Shifted modal distance figure
@@ -901,20 +762,15 @@ figL <- density_base_i +
             color="orange3",alpha=.75, size = 6)
   
 
-# ggsave(fig6bottomL, file="figs/fig6bottomL.jpg",width=4.5, height=6, units="in")
 
-ggsave(figL, file="figModalDistance_L.pdf", width = 11, height = 7, units = "in")
-
-
-
-# the following figures are not included in the main text or appendix
+#ggsave(figL, file="figModalDistance_L.pdf", width = 11, height = 7, units = "in")
 
 
 ```
 
 
-####FIG_R
-# Modal Distance Plot for Scenario 5 with normal action 
+##FIG_R
+## Modal Distance Plot for Scenario 5 with normal action 
 
 ```{r}
 contextChoice <- "scenario 5"
@@ -1080,13 +936,11 @@ figR <- density_base_i2 +
             color="orange3",alpha=.75, size = 6)
   
 
-# ggsave(fig6bottomL, file="figs/fig6bottomL.jpg",width=4.5, height=6, units="in")
-
-ggsave(figR, file="figModalDistance_R.pdf", width = 11, height = 7, units = "in")
+#ggsave(figR, file="figModalDistance_R.pdf", width = 11, height = 7, units = "in")
 
 ```
 
-# Add both FigL and FigR together (in Cogsci paper)
+## Add both FigL and FigR together
 
 ```{r}
 
@@ -1096,12 +950,13 @@ combined_plot <- grid.arrange(figL, figR, ncol = 2)
 
 # Save the combined plot as a single image
 
-ggsave(plot = combined_plot, "figModalDistance.pdf", width = 16, height = 8)
+#ggsave(plot = combined_plot, "figModalDistance.pdf", width = 16, height = 8)
 
 # Display the combined plot
 combined_plot
 ```
-#Create Force Judgment plot
+
+## Create Force Judgment plot
 
 ```{r}
 
@@ -1178,7 +1033,7 @@ ggsave(plot = FigF1, "FigF1.pdf", width = 6, height = 8)
 
 
 ```
-# Merge modal distance plot with poit range plot
+## Merge modal distance plot with point range plot
 
 ```{r}
 
@@ -1193,7 +1048,7 @@ pdf_width <- 18  # Total width of the final image
 pdf_height <- pdf_width / (3 + 1) * 2  # Keeps the width-to-height ratio consistent
 
 # Save the combined plot as a PDF
-ggsave("figModalDistanceMean.pdf", plot = modalmeans_plot2, 
+ggsave("../figures/plots/figModalDistanceMean.pdf", plot = modalmeans_plot2, 
        width = pdf_width, height = pdf_height)
 # Display the combined plot
 # Display the combined plot
@@ -1202,5 +1057,75 @@ grid.draw(modalmeans_plot2)  # Renders the plot
 
 ```
   
+## Create Dataset for Chi Square Plot
 
+```{r}
+epistemicModalDiff <- data.frame(epistemicCondition = c(rep("Ignorance",2),rep("Knowledge",2)),
+                             modalDistance = c(rep(c("Knowledge","Ignorance"),2)),
+                             ChiSquareValue = c(htModelComps[[2]]$Chisq[2],htModelComps[[3]]$Chisq[2],
+                                                htModelComps[[5]]$Chisq[2],htModelComps[[6]]$Chisq[2])
+)
+
+```
+
+## Create Chi square Plot
+
+```{r}
+
+# Convert epistemicCondition to proper labels
+epistemicModalDiff <- epistemicModalDiff %>%
+  mutate(epistemicCondition = recode(epistemicCondition, 
+                                     "ignorance" = "Ignorance", 
+                                     "knowledge" = "Knowledge"))
+
+# Create the plot
+FigChiSq <- epistemicModalDiff %>% 
+  ggplot(aes(x = modalDistance, y = ChiSquareValue, color = modalDistance, fill=modalDistance)) +
+
+  # Jittered data points for visualization
+  #geom_jitter(position = position_jitter(0.2), size = 1.2, alpha = 0.2) +
+
+   geom_bar(stat="identity", colour = "black", alpha=0.7)+
+
+
+  # Faceting by modalDistance
+  facet_grid(~epistemicCondition) +  # Vertical stacking
+  
+  # Styling
+  theme_bw() +
+  theme(
+    plot.background = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = rel(1.5)),
+    axis.title.x = element_text(size = rel(1.5)),
+    axis.title.y = element_text(size = rel(1.8)),
+    axis.text.x = element_text(size = rel(1.8)),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = rel(1.3)),
+    legend.title = element_text(size = rel(1.4)),
+    strip.text = element_text(size = rel(1.3)),  
+    strip.background = element_rect(fill = "white"), 
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
+  ) +
+
+  # Color settings
+  scale_fill_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
+  scale_color_manual(values = c("Ignorance" = "orange3", "Knowledge" = "purple4")) +
+
+  # Labels
+  labs(y = "Chi-square Value")+
+  labs(x = "Modal Distance Values")
+
+
+# Print the figure
+FigChiSq
+
+# Save as PDF
+ggsave(plot = FigChiSq, "../figures/plots/figChiSq.pdf", width = 8, height = 6)
+
+
+```
 
