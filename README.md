@@ -1,7 +1,6 @@
 # Representations of what’s possible reflect others’ epistemic states
 
-This repository contains the experiment, data, analyses and figured for the CogSci 2025 paper "Representations of what’s possible reflect others’ epistemic states
-" <a href="https://osf.io/preprints/psyarxiv/e25x8_v1">""</a> by Lara Kirfel ([kirfel@mpib-berlin.mpg.de](mailto:kirfel@mpib-berlin.mpg.de)), Matthew Mandelkern (mandelkern@nyu.edu) and Jonathan Phillips (Jonathan.S.Phillips@dartmouth.edu).
+This repository contains the experiment, data, analyses and figured for the CogSci 2025 paper <a href="https://osf.io/preprints/psyarxiv/e25x8_v1">"Representations of what’s possible reflect others’ epistemic states"</a> by Lara Kirfel ([kirfel@mpib-berlin.mpg.de](mailto:kirfel@mpib-berlin.mpg.de)), Matthew Mandelkern (mandelkern@nyu.edu) and Jonathan Phillips (Jonathan.S.Phillips@dartmouth.edu).
 
 ## Abstract
 
