@@ -29,9 +29,22 @@ library("here")
 
 
 
-## Study 1: Possibility Generation
+# Study 1: Possibility Generation
 
-#Read in Data
+```{r, message=FALSE, warning=FALSE, include = FALSE}
+# set knitr options
+opts_chunk$set(comment = "",
+               fig.show = "hold")
+# suppress summarise() grouping warning 
+options(dplyr.summarise.inform = F)
+# use effects contrast coding to interpret effects from categorical variables as main effects 
+options(contrasts = c("contr.sum", "contr.poly"))
+```
+
+
+# Data
+
+## Read in Data
 
 ```{r, importing data, message=FALSE, warning=FALSE, include = FALSE}
 ## Cleaning Data and Prepare Dataframes for Demographics and Analysis
@@ -77,7 +90,7 @@ df.desc1<-df.data1 %>%
   
 ```
 
-# Edit Data
+## Edit Data
 
 ```{r, warning=FALSE, message=FALSE, include=FALSE}
 # Contuinued Data Editing for Main Analysis 
@@ -152,17 +165,9 @@ mutate(epistemic_condition = case_when(
     pivot_wider(names_from = responsetype,
               values_from = response) 
   
-#is.list(df.exp1$probability) 
-
-
-##### Export Dataset for further analysis of participants' generated responses
-#write.csv(df.exp1, "df.exp1.csv", row.names = FALSE)
-
-
 ```
 
 ## Create Long Dataframe
-
 
 ```{r}
 df.exp1_long = df.exp1 %>% 
@@ -208,7 +213,7 @@ df.exp1_long_avg = df.exp1_wide %>%
 ```
 
 
-#Export dataset with generated actions and ratings for further analysis
+## Export dataset with generated actions and ratings for analysis in study 2
 
 ```{r}
 
@@ -222,7 +227,7 @@ write.csv(df.exp1_long_exp, "df.exp1_actions.csv", row.names = FALSE)
 ```
 
 
-# Calculate Proportion of Best Option 
+## Calculate Proportion of Best Option 
 `
 ```{r}
 # percentage of time that a participant rates each answer for a given scenario highest. ties go to the first answer
@@ -240,7 +245,10 @@ df.perBest <- df.exp1_wide %>%
 
 ```
 
-#Create Dataframe with just knowledge condition
+
+# Analysis
+
+## Create Dataframe with just knowledge condition
 
 ```{r}
 df.exp1_wide_k <-  df.exp1_wide %>% 
@@ -248,7 +256,7 @@ df.exp1_wide_k <-  df.exp1_wide %>%
 ```
 
 
-# Here we predict the order in which an answer was generated based on how highly the answer is rated in the knowledge condition
+### Here we predict the order in which an answer was generated based on how highly the answer is rated in the knowledge condition
 
 ```{r}
 #  anova predicting answer number by average rating of an answer
@@ -281,7 +289,7 @@ lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(norma
   pgPredictN.df <- anova(lmerSamp_Full,lmerSamp_N)
 ```
 
-#Create Dataframe with just ignorance condition
+##Create Dataframe with just ignorance condition
 
 ```{r}
 df.exp1_wide_i <-  df.exp1_wide %>% 
@@ -289,7 +297,7 @@ df.exp1_wide_i <-  df.exp1_wide %>%
 ```
 
 
-# Here we predict the order in which an answer was generated based on how highly the answer is rated in the ignorance condition
+### Here we predict the order in which an answer was generated based on how highly the answer is rated in the ignorance condition
 
 ```{r}
 
@@ -323,7 +331,7 @@ lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(norma
 ```
 
 
-# Both conditions together: Here we predict the order in which an answer was generated based on how highly the answer is rated
+### Both conditions together: Here we predict the order in which an answer was generated based on how highly the answer is rated
 
 ```{r}
 #  anova predicting answer number by average rating of an answer
@@ -379,8 +387,9 @@ lmerSamp_Full <- lmer(as.numeric(response_order) ~ scale(morality) + scale(norma
    
   
 ```
+# Figures
 
-# Figure showing Ratings of 5 generated actions by epistemic conditions
+## Figure showing Ratings of 5 generated actions by epistemic conditions
 
 ```{r fig1, echo=F, warning=F, message=F, fig.width=6.5,fig.height=5.25}
 #install.packages("viridis")  # Install
@@ -430,7 +439,7 @@ ggsave(fig1, file ="../figures/plots/figMNPratings.pdf", width = 11, height = 7)
 
 fig1
 ```
-# Figure Proportion of Best Option by Action Generation Number
+## Figure Proportion of Best Option by Action Generation Number
 
 ```{r}
 figS1 <- df.perBest %>%
